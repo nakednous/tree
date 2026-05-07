@@ -1,0 +1,29 @@
+{
+  "name": "@nakednous/tree",
+  "version": "0.0.23",
+  "description": "tree — pure numeric core. Zero dependencies.",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "reset": "rm -rf node_modules dist package-lock.json && npm install",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "Jean Pierre Charalambos <nakednous@gmail.com>",
+  "license": "AGPL-3.0-only",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "rollup": "^4.60.3"
+  }
+}

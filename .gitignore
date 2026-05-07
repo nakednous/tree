@@ -1,0 +1,29 @@
+# Node dependencies
+node_modules/
+package-lock.json
+
+# Build output (already covered by dist/ but explicit)
+dist/
+# IIFE bundle copied to root for CDN (if you still do that)
+p5.tree.js
+p5.tree.js.map
+
+# Local testing
+testing/
+
+# Editor/IDE folders
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# OS metadata files
+.DS_Store
+
+# REPL / temp files
+.node_repl_history
