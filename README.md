@@ -33,13 +33,14 @@ import * as tree from '@nakednous/tree'
 
 The dependency direction is strict: `@nakednous/tree` never imports from the bridge or the DOM layer. This is what lets the same `PoseTrack` that drives a camera path also animate any object — headless, server-side, or in a future renderer.
 
-Source is organised into four focused modules:
+Source is organised into five focused modules:
 
 ```
-form.js  — you have specs, you want a matrix
-query.js — you have a matrix, you want information
-quat.js  — quaternion algebra and mat4/mat3 conversions
-track.js — spline math and keyframe animation state machines
+form.js   — you have specs, you want a matrix
+query.js  — you have a matrix, you want information
+quat.js   — quaternion algebra and mat4/mat3 conversions
+track.js  — spline math and keyframe animation state machines
+handle.js — constraint solver + ray primitives for interactive manipulators
 ```
 
 ---
@@ -370,6 +371,27 @@ Three-state result: `VISIBLE` (fully inside), `SEMIVISIBLE` (intersecting), `INV
 
 ---
 
+### Manipulator constraints
+
+`handle.js` is the renderer-agnostic core of an interactive manipulator: ray-primitive intersections, az/el utilities, and a `Constraint` state machine. The `p5.tree` bridge wraps these into a draggable handle; this package supplies the math and the **contract** that makes the handle extensible.
+
+```js
+import { createConstraint, SPHERE, PLANE, AXIS, POINT, DIRECTION,
+         raySphere, rayPlane, rayClosestPointOnAxis,
+         dirFromAzEl, azElFromDir } from '@nakednous/tree'
+
+const c = createConstraint(SPHERE, { radius: 1 })  // or PLANE / AXIS
+const out = [0, 0, 0]
+c.solve(ox,oy,oz, dx,dy,dz)   // ray (working space) → canonical state; chainable
+c.value(out, DIRECTION)       // write the reported value into out(3)
+```
+
+`SPHERE` stores a unit direction (gimbal-free); `PLANE` / `AXIS` store a constrained point. `value` reports a `DIRECTION` (unit) or a `POINT` per kind. Ray primitives are out-first and assume a unit ray direction; `rayPlane` returns `Infinity` when the ray is parallel.
+
+**Constraint contract (extension seam).** A constraint is any object exposing `kind`, `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and optionally `scalar()` / `azEl(out2)`. The handle controller drives any conforming constraint, so a new kind — rotation, 6-DOF, or app-specific — implements this contract (portable, draw-free) plus a bridge-side locus draw, rather than forking the controller. The built-in `Constraint` is the reference implementation. Full design: [`handle-design.md`](./handle-design.md).
+
+---
+
 ### Quaternion and matrix math
 
 Exported individually for use in hot paths.
@@ -439,6 +461,10 @@ WEBGPU  //  0  (z ∈ [0, 1])
 
 // Visibility results
 INVISIBLE, VISIBLE, SEMIVISIBLE
+
+// Manipulator constraint kinds & report modes
+SPHERE, PLANE, AXIS
+POINT, DIRECTION
 
 // Basis vectors (frozen)
 ORIGIN, i, j, k, _i, _j, _k

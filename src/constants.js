@@ -29,3 +29,12 @@ export const k  = Object.freeze([0, 0, 1]);
 export const _i = Object.freeze([-1, 0, 0]);
 export const _j = Object.freeze([0, -1, 0]);
 export const _k = Object.freeze([0, 0, -1]);
+
+// Handle constraint kinds
+export const SPHERE = 0;
+export const PLANE  = 1;
+export const AXIS   = 2;
+
+// Handle report modes
+export const POINT     = 0;
+export const DIRECTION = 1;

@@ -8,4 +8,5 @@ export * from './quat.js';
 export * from './form.js';
 export * from './query.js';
 export * from './track.js';
+export * from './handle.js';
 export * from './visibility.js';
