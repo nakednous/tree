@@ -41,13 +41,41 @@ export const qNegate = (out, a) => {
   out[0]=-a[0]; out[1]=-a[1]; out[2]=-a[2]; out[3]=-a[3]; return out;
 };
 
-/** Hamilton product out = a * b. @returns {number[]} out */
+/** Hamilton product out = a * b. Alias-safe: out may be a or b. @returns {number[]} out */
 export const qMul = (out, a, b) => {
   const ax=a[0],ay=a[1],az=a[2],aw=a[3], bx=b[0],by=b[1],bz=b[2],bw=b[3];
   out[0]=aw*bx+ax*bw+ay*bz-az*by;
   out[1]=aw*by-ax*bz+ay*bw+az*bx;
   out[2]=aw*bz+ax*by-ay*bx+az*bw;
   out[3]=aw*bw-ax*bx-ay*by-az*bz;
+  return out;
+};
+
+/**
+ * Conjugate out = [−x, −y, −z, w] — the inverse of a UNIT quaternion.
+ * (Not qNegate: −q is the SAME rotation on the other hypersphere hemisphere;
+ * the conjugate is the opposite rotation.)
+ * @returns {number[]} out
+ */
+export const qConjugate = (out, a) => {
+  out[0]=-a[0]; out[1]=-a[1]; out[2]=-a[2]; out[3]=a[3]; return out;
+};
+
+/**
+ * Rotate a vec3 by a unit quaternion: out = q · v · q⁻¹, expanded to the
+ * allocation-free t = 2(qv × v); out = v + w·t + qv × t form.
+ * Alias-safe: out may be v.
+ * @param {number[]} out  3-element destination.
+ * @param {number[]} q    Unit quaternion [x,y,z,w].
+ * @param {number[]} v    Vector [x,y,z].
+ * @returns {number[]} out
+ */
+export const qRotateVec3 = (out, q, v) => {
+  const qx=q[0],qy=q[1],qz=q[2],qw=q[3], vx=v[0],vy=v[1],vz=v[2];
+  const tx=2*(qy*vz-qz*vy), ty=2*(qz*vx-qx*vz), tz=2*(qx*vy-qy*vx);
+  out[0]=vx+qw*tx+qy*tz-qz*ty;
+  out[1]=vy+qw*ty+qz*tx-qx*tz;
+  out[2]=vz+qw*tz+qx*ty-qy*tx;
   return out;
 };
 
@@ -89,6 +117,32 @@ export const qNlerp = (out, a, b, t) => {
 // =========================================================================
 // Construction
 // =========================================================================
+
+/**
+ * Shortest-arc rotation taking unit vector a to unit vector b (three.js's
+ * setFromUnitVectors; the arcball delta). Antiparallel inputs rotate 180°
+ * about an axis ⊥ a, seeded from the world axis least aligned with a.
+ * @param {number[]} out
+ * @param {number[]} a  Unit vector [x,y,z].
+ * @param {number[]} b  Unit vector [x,y,z].
+ * @returns {number[]} out (normalised)
+ */
+export const qFromUnitVectors = (out, a, b) => {
+  const d = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  if (d < -0.999999) {
+    const ax = Math.abs(a[0]), ay = Math.abs(a[1]), az = Math.abs(a[2]);
+    let rx = 0, ry = 0, rz = 0;
+    if (ax <= ay && ax <= az) rx = 1; else if (ay <= az) ry = 1; else rz = 1;
+    out[0]=ry*a[2]-rz*a[1]; out[1]=rz*a[0]-rx*a[2]; out[2]=rx*a[1]-ry*a[0];
+    out[3]=0;                                  // 180°: w = cos(π/2) = 0
+  } else {
+    out[0]=a[1]*b[2]-a[2]*b[1];
+    out[1]=a[2]*b[0]-a[0]*b[2];
+    out[2]=a[0]*b[1]-a[1]*b[0];
+    out[3]=1+d;
+  }
+  return qNormalize(out);
+};
 
 /**
  * Build a quaternion from axis-angle.

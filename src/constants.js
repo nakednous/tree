@@ -34,6 +34,7 @@ export const _k = Object.freeze([0, 0, -1]);
 export const SPHERE = 0;
 export const PLANE  = 1;
 export const AXIS   = 2;
+export const DIAL   = 3;
 
 // Handle report modes
 export const POINT     = 0;

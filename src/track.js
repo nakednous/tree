@@ -12,9 +12,9 @@
  *
  * ── Exports ──────────────────────────────────────────────────────────────
  *  Quaternion helpers   (re-exported from quat.js)
- *    qSet qCopy qDot qNormalize qNegate qMul qSlerp qNlerp
- *    qFromAxisAngle qFromLookDir qFromRotMat3x3 qFromMat4 qToMat4
- *    qToAxisAngle
+ *    qSet qCopy qDot qNormalize qNegate qMul qConjugate qRotateVec3
+ *    qSlerp qNlerp qFromUnitVectors qFromAxisAngle qFromLookDir
+ *    qFromRotMat3x3 qFromMat4 qToMat4 qToAxisAngle
  *  Spline / vector helpers
  *    hermiteVec3  lerpVec3
  *  Transform / mat4 helpers
