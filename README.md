@@ -376,19 +376,19 @@ Three-state result: `VISIBLE` (fully inside), `SEMIVISIBLE` (intersecting), `INV
 `handle.js` is the renderer-agnostic core of an interactive manipulator: ray-primitive intersections, az/el utilities, and a `Constraint` state machine. The `p5.tree` bridge wraps these into a draggable handle; this package supplies the math and the **contract** that makes the handle extensible.
 
 ```js
-import { createConstraint, SPHERE, PLANE, AXIS, POINT, DIRECTION,
+import { createConstraint, SPHERE, PLANE, AXIS, DIAL, POINT, DIRECTION,
          raySphere, rayPlane, rayClosestPointOnAxis,
          dirFromAzEl, azElFromDir } from '@nakednous/tree'
 
-const c = createConstraint(SPHERE, { radius: 1 })  // or PLANE / AXIS
+const c = createConstraint(SPHERE, { radius: 1 })  // or PLANE / AXIS / DIAL
 const out = [0, 0, 0]
 c.solve(ox,oy,oz, dx,dy,dz)   // ray (working space) → canonical state; chainable
 c.value(out, DIRECTION)       // write the reported value into out(3)
 ```
 
-`SPHERE` stores a unit direction (gimbal-free); `PLANE` / `AXIS` store a constrained point. `value` reports a `DIRECTION` (unit) or a `POINT` per kind. Ray primitives are out-first and assume a unit ray direction; `rayPlane` returns `Infinity` when the ray is parallel.
+`SPHERE` stores a unit direction (gimbal-free); `PLANE` / `AXIS` store a constrained point; `DIAL` stores an accumulated angle θ (multi-turn winding preserved). `value` reports a `DIRECTION` (unit) or a `POINT` per kind. `aim(ax,ay,az[, zx,zy,zz])` re-aims the constraint basis in the working space — `PLANE` takes a new normal (point re-projected), `AXIS` a new direction (`t` preserved), `DIAL` a new plane normal plus optional θ=0 reference (θ preserved) — the seam the `p5.tree` bridge's deferred `from` frame drives. Ray primitives are out-first and assume a unit ray direction; `rayPlane` returns `Infinity` when the ray is parallel.
 
-**Constraint contract (extension seam).** A constraint is any object exposing `kind`, `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and optionally `scalar()` / `azEl(out2)`. The handle controller drives any conforming constraint, so a new kind — rotation, 6-DOF, or app-specific — implements this contract (portable, draw-free) plus a bridge-side locus draw, rather than forking the controller. The built-in `Constraint` is the reference implementation. Full design: [`handle-design.md`](./handle-design.md).
+**Constraint contract (extension seam).** A constraint is any object exposing `kind`, `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and optionally `scalar()` / `azEl(out2)` / `aim(ax,ay,az[, zx,zy,zz])`. The handle controller drives any conforming constraint, so a new kind — rotation, 6-DOF, or app-specific — implements this contract (portable, draw-free) plus a bridge-side locus draw, rather than forking the controller. The built-in `Constraint` is the reference implementation. Full design: [`handle-design.md`](./handle-design.md).
 
 ---
 
@@ -463,7 +463,7 @@ WEBGPU  //  0  (z ∈ [0, 1])
 INVISIBLE, VISIBLE, SEMIVISIBLE
 
 // Manipulator constraint kinds & report modes
-SPHERE, PLANE, AXIS
+SPHERE, PLANE, AXIS, DIAL
 POINT, DIRECTION
 
 // Basis vectors (frozen)

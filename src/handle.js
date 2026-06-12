@@ -65,7 +65,9 @@
  * ── Extension contract ─────────────────────────────────────────────────────
  * A constraint is any object exposing: `kind` (integer discriminant),
  * `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and
- * optionally `scalar()` / `azEl(out2)`. The p5.tree handle controller drives
+ * optionally `scalar()` / `azEl(out2)` / `aim(ax,ay,az[, zx,zy,zz])` — the
+ * basis re-aim seam the bridge's deferred `from` frame drives (§4.13).
+ * The p5.tree handle controller drives
  * any conforming constraint (lifecycle, frame conversion, bind, hooks, pick);
  * a new kind — 6-DOF, or app-specific — implements this contract here
  * (portable, draw-free) plus a bridge-side locus/pick draw (`drawLocus` /
@@ -297,22 +299,7 @@ export class Constraint {
     this.r1 = [0, 0, 1];
     if (kind === DIAL) {
       const z = _vec3(opts.zero);
-      if (z) {
-        // Project the supplied reference onto the dial plane.
-        const d = z[0]*this.u[0] + z[1]*this.u[1] + z[2]*this.u[2];
-        this.r0[0] = z[0] - d*this.u[0];
-        this.r0[1] = z[1] - d*this.u[1];
-        this.r0[2] = z[2] - d*this.u[2];
-        const l = Math.sqrt(this.r0[0]**2 + this.r0[1]**2 + this.r0[2]**2);
-        if (l < EPS) _basis(this.u, this.r0, this.r1);
-        else { this.r0[0]/=l; this.r0[1]/=l; this.r0[2]/=l; }
-      } else {
-        _basis(this.u, this.r0, this.r1);
-      }
-      // r1 = u × r0 (recomputed even when _basis ran — same result, one rule).
-      this.r1[0] = this.u[1]*this.r0[2] - this.u[2]*this.r0[1];
-      this.r1[1] = this.u[2]*this.r0[0] - this.u[0]*this.r0[2];
-      this.r1[2] = this.u[0]*this.r0[1] - this.u[1]*this.r0[0];
+      this._dialBasis(z ? z[0] : NaN, z ? z[1] : NaN, z ? z[2] : NaN);
     }
 
     // Extent: AXIS clamps t (default [-1, 1]); DIAL clamps θ in radians
@@ -349,6 +336,28 @@ export class Constraint {
     this.pt[0] = this.anchor[0] + c*this.r0[0] + sn*this.r1[0];
     this.pt[1] = this.anchor[1] + c*this.r0[1] + sn*this.r1[1];
     this.pt[2] = this.anchor[2] + c*this.r0[2] + sn*this.r1[2];
+  }
+
+  // Build the DIAL in-plane basis (r0, r1) from the current axis u and an
+  // optional θ=0 reference (zx,zy,zz): the reference is projected onto the
+  // dial plane and normalised; absent (NaN) or degenerate, r0 derives from u
+  // via the least-aligned-axis seed. r1 = u × r0, right-handed about u.
+  _dialBasis(zx, zy, zz) {
+    if (_isNum(zx) && _isNum(zy) && _isNum(zz)) {
+      const d = zx*this.u[0] + zy*this.u[1] + zz*this.u[2];
+      this.r0[0] = zx - d*this.u[0];
+      this.r0[1] = zy - d*this.u[1];
+      this.r0[2] = zz - d*this.u[2];
+      const l = Math.sqrt(this.r0[0]**2 + this.r0[1]**2 + this.r0[2]**2);
+      if (l < EPS) _basis(this.u, this.r0, this.r1);
+      else { this.r0[0]/=l; this.r0[1]/=l; this.r0[2]/=l; }
+    } else {
+      _basis(this.u, this.r0, this.r1);
+    }
+    // r1 = u × r0 (recomputed even when _basis ran — same result, one rule).
+    this.r1[0] = this.u[1]*this.r0[2] - this.u[2]*this.r0[1];
+    this.r1[1] = this.u[2]*this.r0[0] - this.u[0]*this.r0[2];
+    this.r1[2] = this.u[0]*this.r0[1] - this.u[1]*this.r0[0];
   }
 
   /**
@@ -517,6 +526,46 @@ export class Constraint {
         this.s = _clamp(a + TWO_PI * Math.round((this.s - a) / TWO_PI),
                         this.min, this.max);
       }
+      this._dialPoint();
+    }
+    return this;
+  }
+
+  /**
+   * Re-aim the constraint basis in the working space — the deferred-frame
+   * seam (the p5.tree bridge's `from` opt resolves its symbolic basis through
+   * mapDirection and calls this). Per kind:
+   *   PLANE  — new normal; the point is re-projected onto the new plane.
+   *   AXIS   — new direction; the scalar t is preserved, the point recomputed.
+   *   DIAL   — new plane normal + optional θ=0 reference; θ is preserved, the
+   *            in-plane basis rebuilt (reference re-derived when omitted),
+   *            the point recomputed.
+   *   SPHERE — no basis; no-op.
+   * Inputs are normalised; a zero-length axis keeps the previous one.
+   * Chainable.
+   *
+   * @param {number} ax,ay,az  New normal (PLANE) / direction (AXIS) / dial-plane normal (DIAL).
+   * @param {number} [zx,zy,zz]  DIAL only — θ=0 reference (re-derived when omitted).
+   * @returns {Constraint} this
+   */
+  aim(ax, ay, az, zx, zy, zz) {
+    if (this.kind === PLANE) {
+      const px = this.n[0], py = this.n[1], pz = this.n[2];
+      this.n[0] = ax; this.n[1] = ay; this.n[2] = az;
+      _unit(this.n, px, py, pz);
+      this.seed(this.pt[0], this.pt[1], this.pt[2]);
+    } else if (this.kind === AXIS) {
+      const px = this.u[0], py = this.u[1], pz = this.u[2];
+      this.u[0] = ax; this.u[1] = ay; this.u[2] = az;
+      _unit(this.u, px, py, pz);
+      this.pt[0] = this.anchor[0] + this.s*this.u[0];
+      this.pt[1] = this.anchor[1] + this.s*this.u[1];
+      this.pt[2] = this.anchor[2] + this.s*this.u[2];
+    } else if (this.kind === DIAL) {
+      const px = this.u[0], py = this.u[1], pz = this.u[2];
+      this.u[0] = ax; this.u[1] = ay; this.u[2] = az;
+      _unit(this.u, px, py, pz);
+      this._dialBasis(zx, zy, zz);
       this._dialPoint();
     }
     return this;
