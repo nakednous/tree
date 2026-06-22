@@ -12,6 +12,10 @@ export const SCREEN = 'SCREEN';
 export const MODEL  = 'MODEL';
 export const MATRIX = 'MATRIX';
 
+// Integrator frame source (helm `from` only): the construct's own current pose
+// — body-relative; not a general mapDirection space.
+export const SELF   = 'SELF';
+
 // NDC Z convention (only difference between backends)
 export const WEBGL  = -1;   // z ∈ [−1, 1]
 export const WEBGPU =  0;   // z ∈ [0, 1]
