@@ -1,6 +1,6 @@
 # `@nakednous/tree`
 
-Pure numeric core for animation, coordinate-space mapping, and visibility — **zero dependencies**, runs anywhere.
+Pure numeric core for animation, rate-driven control, coordinate-space mapping, and visibility — **zero dependencies**, runs anywhere.
 
 ---
 
@@ -33,13 +33,14 @@ import * as tree from '@nakednous/tree'
 
 The dependency direction is strict: `@nakednous/tree` never imports from the bridge or the DOM layer. This is what lets the same `PoseTrack` that drives a camera path also animate any object — headless, server-side, or in a future renderer.
 
-Source is organised into five focused modules:
+Source is organised into six focused modules:
 
 ```
 form.js   — you have specs, you want a matrix
 query.js  — you have a matrix, you want information
 quat.js   — quaternion algebra and mat4/mat3 conversions
 track.js  — spline math and keyframe animation state machines
+helm.js   — 6-DOF rate-stream integrator — the Track family's live-input sibling
 handle.js — constraint solver + ray primitives for interactive manipulators
 ```
 
@@ -296,6 +297,68 @@ One-keyframe behaviour: `play()` with exactly one keyframe snaps `eval()` to tha
 
 ---
 
+### PoseHelm — 6-DOF rate-driven pose
+
+The rate-stream sibling of the Track family. Where a track produces a pose from keyframes over time, a `PoseHelm` produces one from a live 6-DOF delta stream — a SpaceNavigator, a tracked hand, an agent policy. It holds a profile plus the integrated pose; there is no timeline (no keyframes, no `play` / `seek` / `loop`), and it never learns about a camera — the host hands it a resolved `basis` each step.
+
+```js
+import { PoseHelm } from '@nakednous/tree'
+
+const helm = new PoseHelm()
+const out  = { pos: [0,0,0], rot: [0,0,0,1] }
+
+// a transport feeds raw lane rates — either half may be omitted:
+helm.feed([tx, ty, tz], [rx, ry, rz])
+
+// per-frame — host-driven, zero allocation:
+helm.step(out, dt, basis)   // integrate dt seconds, write the new { pos, rot }
+helm.eval(out)              // read the current pose without integrating
+```
+
+`feed` is the input (as `add` is a track's); `step` + `eval` parallel `tick` + `eval`. `step` is host-driven — the bridge calls it each frame, exactly as a sketch never calls `track.tick()`.
+
+**Profile — sign · sens · lane.** The whole sign / sensitivity / axis-map question is one flat declarative object. Six channels — three translation (Tx Ty Tz), three rotation (Rp pitch, Ry yaw, Rr roll) — each `{ sign, sens, lane }`:
+
+```js
+helm.profile = {
+  Tx: { sign: +1, sens: 0.30,   lane: 0 },   // lane = which fed channel drives +X
+  Ty: { sign: +1, sens: 0.30,   lane: 2 },
+  Tz: { sign: -1, sens: 0.30,   lane: 1 },
+  Rp: { sign: -1, sens: 0.0025, lane: 0 },
+  Ry: { sign: -1, sens: 0.0025, lane: 2 },
+  Rr: { sign: +1, sens: 0.0018, lane: 1 },
+}
+```
+
+- **sign** — per-app direction (camera-fly vs object-grab invert).
+- **sens** — per-axis sensitivity (tame roll without touching the rest).
+- **lane** — input-channel permutation: which fed channel drives this DOF. `T*` lanes index the translation triple, `R*` the rotation triple.
+
+`sens` does all the scaling, so the same raw `feed()` suits any transport — only the profile changes. The default is SpaceNavigator-tuned and meant to be replaced wholesale for a different device. `HELM_CHANNELS` is the frozen order `['Tx','Ty','Tz','Rp','Ry','Rr']`.
+
+**Frame — `from`.** `helm.from` names the space fed rates are interpreted in — a declaration the host reads to resolve the per-step `basis` (the core stays camera-agnostic):
+
+```
+WORLD    world axes — the identity basis (step's basis is null)
+EYE      a viewing camera's frame — screen-relative (default)
+SELF     the helm's OWN evolving pose — body-relative
+<mat4>   an explicit fixed frame
+```
+
+`step` rotates both linear and angular rates through `basis`, then composes the quaternion world-frame — one code path covering body-fly and screen-relative manipulation. `SELF` is body-relative (a per-frame-rebuilt pose matrix); it is a helm `from` value only, not a general mapping space.
+
+**Rest of the surface.**
+
+```js
+helm.deadzone = 8       // rest-drift floor — |rate| ≤ deadzone reads as 0
+helm.activity(out6)     // six effective rates (post deadzone·sign·sens), channel order
+helm.home([pose])       // re-home pos + rot (NOT reset — no keyframes); clears pending rate
+```
+
+The `p5.tree` bridge wraps this into `createCameraHelm` / `createPoseHelm` (transport, camera basis, draw-loop player) plus the `helmRig` gizmo and the `createPanel(helm)` profile editor.
+
+---
+
 ### Coordinate-space mapping
 
 `mapLocation` and `mapDirection` convert points and vectors between any pair of named spaces. All work is done in flat scalar arithmetic — no objects created per call.
@@ -454,6 +517,9 @@ projLeft  projRight  projTop  projBottom
 ```js
 // Coordinate spaces
 WORLD, EYE, NDC, SCREEN, MODEL, MATRIX
+
+// Helm integrator frame (helm `from` only — body-relative, not a mapping space)
+SELF
 
 // NDC Z convention
 WEBGL   // −1  (z ∈ [−1, 1])
