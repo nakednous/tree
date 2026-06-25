@@ -17,6 +17,12 @@
  *   eval(out)                    read the current { pos, rot } (zero-alloc, as Track.eval)
  *   home(pose?)                  re-home the integrated pose (NOT reset — no keyframes to clear)
  *
+ * Value layer (opt-in, §10): a per-helm `fullScale` keeps the read-outs honest
+ * across input scales; an opt-in `filter` (oneEuro) conditions the fed rates
+ * before the deadzone inside step; `poseDelta` differences two absolute poses
+ * into a feedable rate. With `filter` null and the default `fullScale`, the
+ * clean rate-native path is unchanged.
+ *
  * Quaternion algebra is provided by quat.js. Out-first throughout; no allocation
  * in feed/step/eval. Storage convention (matches the rest of the core): vec3 and
  * quat state are plain number[] (f64) — the same shape as track.js keyframes and
@@ -51,6 +57,23 @@ import { qFromAxisAngle, qMul, qNormalize } from './quat.js';
 // =========================================================================
 
 const _dq = [0, 0, 0, 1];
+
+// Scratch for the optional input filter (helm.filter). The fed rates are packed
+// into one 6-vector, conditioned, and unpacked to lin/ang triples before the
+// deadzone — so a single filter carries one state per helm. Shared across
+// instances (step is synchronous, at most once per helm per frame).
+const _f6raw = [0, 0, 0, 0, 0, 0];
+const _f6out = [0, 0, 0, 0, 0, 0];
+const _fLin  = [0, 0, 0];
+const _fAng  = [0, 0, 0];
+
+/**
+ * Default full-deflection input magnitude — the fed rate a read-out shows as
+ * full (the SpaceNavigator's saturated lane). Private to core: a transport on a
+ * different raw scale sets helm.fullScale and never reads this, so there is no
+ * public HELM_FULL export. Display-only; integration uses profile.sens directly.
+ */
+const HELM_FULL_SCALE = 500;
 
 // Deadzone gate — |v| > dz keeps v, else 0. Module-level so step allocates no
 // closure. Strictly-greater matches the e7 reference (rest reads exact 0).
@@ -103,6 +126,24 @@ export class PoseHelm {
      * that rest at exact 0 need only a small floor. @type {number}
      */
     this.deadzone = 8;
+
+    /**
+     * Full-deflection input magnitude for the read-outs (gizmo overlay + panel
+     * meters): a fed rate of |fullScale| reads as a full bar / arrow. Set by a
+     * transport whose saturated rate differs from the default (a gamepad stick
+     * that saturates at 1 sets fullScale = 1). Display-only — integration uses
+     * profile.sens directly, so this never affects flight. @type {number}
+     */
+    this.fullScale = HELM_FULL_SCALE;
+
+    /**
+     * Optional input conditioner applied to the fed rates BEFORE the deadzone,
+     * inside step — a oneEuro filter, or any f(out, raw, dt) carrying function
+     * with a reset(). null (the default) is the clean rate-native path: the
+     * filter branch is skipped, so a clean device pays nothing. Set for noisy /
+     * absolute sources; home() resets it. @type {?Function}
+     */
+    this.filter = null;
 
     /**
      * The space fed rates are interpreted in: a space constant (WORLD | EYE) or
@@ -165,7 +206,22 @@ export class PoseHelm {
    */
   step(out, dt, basis) {
     const p = this.profile, dz = this.deadzone;
-    const lin = this._lin, ang = this._ang;
+    let lin = this._lin, ang = this._ang;
+
+    // Value layer — condition the fed rates BEFORE the deadzone (the filter
+    // narrows the jitter band; the deadzone then gates the residual to exact
+    // zero). The filter carries state, so it is ticked exactly once per step;
+    // activity() reads the raw fed rate and is left unfiltered (the read-out
+    // shows device input, normalized by fullScale). Skipped when filter is null.
+    const filter = this.filter;
+    if (filter) {
+      _f6raw[0] = lin[0]; _f6raw[1] = lin[1]; _f6raw[2] = lin[2];
+      _f6raw[3] = ang[0]; _f6raw[4] = ang[1]; _f6raw[5] = ang[2];
+      filter(_f6out, _f6raw, dt);
+      _fLin[0] = _f6out[0]; _fLin[1] = _f6out[1]; _fLin[2] = _f6out[2];
+      _fAng[0] = _f6out[3]; _fAng[1] = _f6out[4]; _fAng[2] = _f6out[5];
+      lin = _fLin; ang = _fAng;
+    }
 
     // Basis axes (right / up / forward). No basis ⇒ the identity eye matrix:
     // right +X, up +Y, forward −Z. Forward is −col2 (an eye→world matrix stores
@@ -264,6 +320,69 @@ export class PoseHelm {
     }
     this._lin[0] = this._lin[1] = this._lin[2] = 0;
     this._ang[0] = this._ang[1] = this._ang[2] = 0;
+    if (this.filter) this.filter.reset();   // drop filter state at the discontinuity
     return this;
   }
+}
+
+// =========================================================================
+// poseDelta — absolute pose → 6-DOF rate
+// =========================================================================
+
+/**
+ * Difference two consecutive absolute poses into a 6-DOF rate the helm can be
+ * fed — the bridge for absolute-pose transports (gesture / landmark / marker /
+ * IMU) into feed(lin, ang). Out-first, zero-allocation.
+ *
+ * Linear rate is (cur.pos − prev.pos) / dt. Angular rate is the world-frame
+ * angular velocity ω carrying prev.rot onto cur.rot over dt: the relative
+ * rotation r = cur · conj(prev) (so cur = r · prev, the world-frame compose the
+ * step integrates), read as axis · angle / dt.
+ *
+ * The double-cover guard is the whole reason to ship this rather than inline it:
+ * a quaternion and its negation are the same orientation, so when
+ * dot(prev.rot, cur.rot) < 0 the two samples sit on opposite hemispheres and a
+ * naive difference takes the long way round — the angular rate spikes at the
+ * crossing. Flipping cur into prev's hemisphere first keeps r the shortest arc.
+ *
+ * Fed through a helm with an identity profile in WORLD, the integrated pose
+ * retraces the source (the round-trip e9 asserts). A 1:1, non-integrated
+ * consumer skips the helm and applyPoses the absolute pose directly.
+ *
+ * @param {{ lin:number[], ang:number[] }} [out]  Destination; omit for a fresh one.
+ * @param {{ pos:ArrayLike<number>, rot:ArrayLike<number> }} prev  Previous pose.
+ * @param {{ pos:ArrayLike<number>, rot:ArrayLike<number> }} cur   Current pose.
+ * @param {number} dt  Elapsed seconds between the two samples.
+ * @returns {{ lin:number[], ang:number[] }} out
+ */
+export function poseDelta(out, prev, cur, dt) {
+  out = out || { lin: [0, 0, 0], ang: [0, 0, 0] };
+  const inv = 1 / dt;
+
+  out.lin[0] = (cur.pos[0] - prev.pos[0]) * inv;
+  out.lin[1] = (cur.pos[1] - prev.pos[1]) * inv;
+  out.lin[2] = (cur.pos[2] - prev.pos[2]) * inv;
+
+  const px = prev.rot[0], py = prev.rot[1], pz = prev.rot[2], pw = prev.rot[3];
+  let   cx = cur.rot[0],  cy = cur.rot[1],  cz = cur.rot[2],  cw = cur.rot[3];
+
+  // Double-cover guard: bring cur into prev's hemisphere so r is the short arc.
+  if (px * cx + py * cy + pz * cz + pw * cw < 0) { cx = -cx; cy = -cy; cz = -cz; cw = -cw; }
+
+  // Relative rotation r = cur · conj(prev), conj(prev) = (−px, −py, −pz, pw).
+  const rx = -cw * px + cx * pw - cy * pz + cz * py;
+  const ry = -cw * py + cx * pz + cy * pw - cz * px;
+  const rz = -cw * pz - cx * py + cy * px + cz * pw;
+  const rw =  cw * pw + cx * px + cy * py + cz * pz;   // = dot(prev, cur) ≥ 0 → angle ≤ π
+
+  // Axis · angle of r → ω = axis · angle / dt. Below the threshold the rotation
+  // is negligible (no well-defined axis) and the angular rate is exact zero.
+  const sinHalf = Math.sqrt(rx * rx + ry * ry + rz * rz);
+  if (sinHalf < 1e-8) {
+    out.ang[0] = 0; out.ang[1] = 0; out.ang[2] = 0;
+  } else {
+    const k = (2 * Math.atan2(sinHalf, rw)) * inv / sinHalf;
+    out.ang[0] = rx * k; out.ang[1] = ry * k; out.ang[2] = rz * k;
+  }
+  return out;
 }

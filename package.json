@@ -1,6 +1,6 @@
 {
   "name": "@nakednous/tree",
-  "version": "0.0.26",
+  "version": "0.0.27",
   "description": "tree — pure numeric core. Zero dependencies.",
   "type": "module",
   "main": "dist/index.js",
