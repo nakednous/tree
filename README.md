@@ -41,6 +41,7 @@ query.js  — you have a matrix, you want information
 quat.js   — quaternion algebra and mat4/mat3 conversions
 track.js  — spline math and keyframe animation state machines
 helm.js   — 6-DOF rate-stream integrator — the Track family's live-input sibling
+filter.js — input conditioning: the 1€ filter + absolute→rate differencing
 handle.js — constraint solver + ray primitives for interactive manipulators
 ```
 
@@ -351,11 +352,52 @@ SELF     the helm's OWN evolving pose — body-relative
 
 ```js
 helm.deadzone = 8       // rest-drift floor — |rate| ≤ deadzone reads as 0
+helm.filter = oneEuro({ minCutoff: 1, beta: 0.5 })  // optional input conditioner (filter → deadzone)
+helm.fullScale = 500    // raw full-deflection magnitude a read-out divides by
 helm.activity(out6)     // six effective rates (post deadzone·sign·sens), channel order
-helm.home([pose])       // re-home pos + rot (NOT reset — no keyframes); clears pending rate
+helm.home([pose])       // re-home pos + rot (NOT reset — no keyframes); clears pending rate; resets filter
 ```
 
+`filter` is an optional input conditioner (default `null`): when set, `step` runs it over the fed rate before the deadzone — filter then deadzone, the two orthogonal (the 1€ removes zero-mean jitter; the deadzone's exact zero is the only no-creep guarantee, since a low-pass passes DC). `fullScale` (default `500`) is the raw full-deflection magnitude a read-out divides by, so a transport on a different input scale declares its own and its meters read honestly. `activity()` reports the raw fed rate (pre-filter) by design.
+
 The `p5.tree` bridge wraps this into `createCameraHelm` / `createPoseHelm` (transport, camera basis, draw-loop player) plus the `helmRig` gizmo and the `createPanel(helm)` profile editor.
+
+---
+
+### Input conditioning — `oneEuro` · `poseDelta`
+
+Two helpers for the rate stream a helm feeds on — flat, out-first, zero-alloc (`filter.js`).
+
+**`oneEuro({ minCutoff, beta, dCutoff })`** is the [1€ filter](https://gery.casiez.net/1euro/) (Casiez et al., CHI'12): a first-order low-pass whose cutoff rises with signal speed — heavy smoothing at rest, low lag under motion. It returns a stateful carrying function, dispatched on its first argument:
+
+```js
+import { oneEuro } from '@nakednous/tree'
+
+const f = oneEuro({ minCutoff: 1, beta: 0.5 })   // params live-mutable: f.minCutoff, f.beta
+
+// scalar form — returns the filtered number
+const y = f(rawScalar, dt)
+
+// vec form — out-first, zero-alloc after warm-up
+const out = [0, 0, 0]
+f(out, rawVec3, dt)
+
+f.reset()   // drop state — next call re-seeds
+```
+
+It removes zero-mean **jitter**, not a DC **bias**: a low-pass passes a constant offset, so a resting bias survives it and still integrates to drift — pair it with a deadzone (the helm applies filter → deadzone in that order).
+
+**`poseDelta(out, prev, cur, dt)`** differences two absolute poses into the `{ lin, ang }` rate a helm feeds on — the bridge from an absolute transport (a tracked hand, a marker, a played keyframe) to the rate stream.
+
+```js
+import { poseDelta } from '@nakednous/tree'
+
+const rate = { lin: [0, 0, 0], ang: [0, 0, 0] }
+poseDelta(rate, prevPose, curPose, dt)   // prev / cur: { pos:[x,y,z], rot:[x,y,z,w] }
+helm.feed(rate.lin, rate.ang)
+```
+
+The angular half carries a **double-cover guard**: a quaternion and its negation are the same orientation, so a source that returns a canonicalised quaternion makes the stored value jump hemispheres as the true orientation sweeps through `w = 0`. When `dot(prev, cur) < 0`, `poseDelta` flips `cur` into `prev`'s hemisphere before differencing, so the relative rotation always takes the short arc — without it the angular rate spikes toward `2π/dt` at every crossing.
 
 ---
 
