@@ -39,7 +39,11 @@
  * "NaN" }. In args: { "$alias": i } is the same object as argument i (alias-
  * safety cases); { "$oneEuro": opts } builds a oneEuro filter; { "$hook":
  * name } installs a callback that logs `name`, and `$get` of `$hooks` reads and
- * clears that log.
+ * clears that log. The gizmo generators take live subjects: { "$constraint":
+ * [kind, opts] } builds a Constraint; { "$track": { class, add, set } } builds
+ * a PoseTrack or CameraTrack, adds each spec and assigns `set`'s fields;
+ * { "$helm": { profile?, feed? } } builds a PoseHelm, installs the profile
+ * and feeds [lin, ang].
  *
  * Hand-authored fixtures — `<module>.<source>.json`, such as golden/camera.p5.json
  * for the p5 parity cases — carry the same shape, are replayed by the test, and
@@ -79,6 +83,19 @@ export function decode(v, ctx = {}) {
     if ('$alias' in v)   return ctx.args[v.$alias];
     if ('$oneEuro' in v) return tree.oneEuro(decode(v.$oneEuro, ctx));
     if ('$hook' in v)    { const n = v.$hook; return () => { ctx.hooks.push(n); }; }
+    if ('$constraint' in v) return tree.createConstraint(...decode(v.$constraint, ctx));
+    if ('$track' in v) {
+      const d = decode(v.$track, ctx), t = new tree[d.class]();
+      for (const s of d.add ?? []) t.add(s);
+      Object.assign(t, d.set ?? {});
+      return t;
+    }
+    if ('$helm' in v) {
+      const d = decode(v.$helm, ctx), h = new tree.PoseHelm();
+      if (d.profile) h.profile = d.profile;
+      if (d.feed) h.feed(d.feed[0], d.feed[1]);
+      return h;
+    }
     const out = {};
     for (const k of Object.keys(v)) out[k] = decode(v[k], ctx);
     return out;
@@ -101,7 +118,8 @@ function encode(v) {
   if (typeof v === 'number') return Number.isFinite(v) ? v : { $num: String(v) };
   if (Array.isArray(v) || ArrayBuffer.isView(v)) return Array.from(v, encode);
   if (v && typeof v === 'object') {
-    if ('$num' in v || '$alias' in v || '$oneEuro' in v || '$hook' in v) return v;
+    if ('$num' in v || '$alias' in v || '$oneEuro' in v || '$hook' in v ||
+        '$constraint' in v || '$track' in v || '$helm' in v) return v;
     const out = {};
     for (const k of Object.keys(v)) out[k] = encode(v[k]);
     return out;
@@ -241,6 +259,12 @@ const constants = {
     'ORIGIN', 'i', 'j', 'k', '_i', '_j', '_k',
     'SPHERE', 'PLANE', 'AXIS', 'DIAL', 'POINT', 'DIRECTION',
     'CIRCLE', 'SQUARE',
+    'NONE', 'X', '_X', 'Y', '_Y', 'Z', '_Z', 'LABELS',
+    'NEAR', 'FAR', 'LEFT', 'RIGHT', 'BOTTOM', 'TOP', 'BODY', 'APEX',
+    'PATH', 'CENTER', 'CONTROLS', 'TANGENTS_IN', 'TANGENTS_OUT', 'TANGENTS', 'HANDLES',
+    'TRANSLATE', 'ROTATE',
+    'HANDLE', 'AIM', 'LOCUS', 'RING',
+    'COLOR_X', 'COLOR_Y', 'COLOR_Z', 'COLOR_DIM',
   ],
 };
 
@@ -1156,7 +1180,30 @@ const camera = {
 // main
 // =========================================================================
 
-const MODULES = { constants, quat, filter, form, query, track, handle, helm, visibility, camera };
+// =========================================================================
+// gizmo
+// =========================================================================
+
+// An arrays object of `cap` vertices as plain data (typed arrays decode to
+// plain arrays, which the generators write the same way).
+const A = (cap, o = {}) => {
+  const out = { position: { numComponents: 3, data: new Array(3 * cap).fill(0) } };
+  if (o.color)    out.color    = { numComponents: 4, data: new Array(4 * cap).fill(0) };
+  if (o.texcoord) out.texcoord = { numComponents: 2, data: new Array(2 * cap).fill(0) };
+  out.count = 0;
+  if (o.labels) out.labels = [];
+  return out;
+};
+
+const gizmo = {
+  functions: {
+    createArrays: exact([[0], [4], [4, { color: true }], [2, { texcoord: true, labels: true }], [-3]]),
+    growArrays:   exact([[A(2, { color: true }), 5], [A(3, { texcoord: true, labels: true }), 1]], { writes: [0] }),
+    capacityOf:   exact([[A(0)], [A(7)], [A(7, { color: true })]]),
+  },
+};
+
+const MODULES = { constants, quat, filter, form, query, track, handle, helm, visibility, camera, gizmo };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const [name, spec] of Object.entries(MODULES)) generate(name, spec);

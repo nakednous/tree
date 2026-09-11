@@ -1,0 +1,114 @@
+{
+  "module": "gizmo",
+  "tolerance": {"exact": 0, "f64": 0.000001, "f32": 0.00001},
+  "functions": {
+    "createArrays": {
+      "tol": "exact",
+      "cases": [
+        {"args": [0], "out": {"position": {"numComponents": 3, "data": []}, "count": 0}},
+        {
+          "args": [4],
+          "out": {"position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, "count": 0}
+        },
+        {
+          "args": [4, {"color": true}],
+          "out": {
+            "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+            "color": {"numComponents": 4, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+            "count": 0
+          }
+        },
+        {
+          "args": [2, {"texcoord": true, "labels": true}],
+          "out": {
+            "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0]},
+            "texcoord": {"numComponents": 2, "data": [0, 0, 0, 0]},
+            "count": 0,
+            "labels": []
+          }
+        },
+        {"args": [-3], "out": {"position": {"numComponents": 3, "data": []}, "count": 0}}
+      ]
+    },
+    "growArrays": {
+      "tol": "exact",
+      "cases": [
+        {
+          "args": [
+            {
+              "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0]},
+              "color": {"numComponents": 4, "data": [0, 0, 0, 0, 0, 0, 0, 0]},
+              "count": 0
+            },
+            5
+          ],
+          "out": {
+            "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+            "color": {"numComponents": 4, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+            "count": 0
+          },
+          "writes": {
+            "0": {
+              "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+              "color": {"numComponents": 4, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+              "count": 0
+            }
+          }
+        },
+        {
+          "args": [
+            {
+              "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0]},
+              "texcoord": {"numComponents": 2, "data": [0, 0, 0, 0, 0, 0]},
+              "count": 0,
+              "labels": []
+            },
+            1
+          ],
+          "out": {
+            "position": {"numComponents": 3, "data": [0, 0, 0]},
+            "texcoord": {"numComponents": 2, "data": [0, 0]},
+            "count": 0,
+            "labels": []
+          },
+          "writes": {
+            "0": {
+              "position": {"numComponents": 3, "data": [0, 0, 0]},
+              "texcoord": {"numComponents": 2, "data": [0, 0]},
+              "count": 0,
+              "labels": []
+            }
+          }
+        }
+      ]
+    },
+    "capacityOf": {
+      "tol": "exact",
+      "cases": [
+        {"args": [{"position": {"numComponents": 3, "data": []}, "count": 0}], "out": 0},
+        {
+          "args": [
+            {
+              "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+              "count": 0
+            }
+          ],
+          "out": 7
+        },
+        {
+          "args": [
+            {
+              "position": {"numComponents": 3, "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+              "color": {
+                "numComponents": 4,
+                "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+              },
+              "count": 0
+            }
+          ],
+          "out": 7
+        }
+      ]
+    }
+  }
+}

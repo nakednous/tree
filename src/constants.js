@@ -44,6 +44,55 @@ export const DIAL   = 3;
 export const POINT     = 0;
 export const DIRECTION = 1;
 
-// Pointer-hit shapes (pointerHit)
+// Pointer-hit shapes (pointerHit); bullsEyeLines' shape
 export const CIRCLE = 0;
 export const SQUARE = 1;
+
+// Gizmo bits — one namespace per generator. The same value means different
+// things to different generators, and no generator reads another's bits.
+export const NONE = 0;
+
+// axesLines
+export const X      = 1 << 0;
+export const _X     = 1 << 1;
+export const Y      = 1 << 2;
+export const _Y     = 1 << 3;
+export const Z      = 1 << 4;
+export const _Z     = 1 << 5;
+export const LABELS = 1 << 6;
+
+// frustumLines (LEFT … TOP also key a bounds object's planes)
+export const NEAR   = 1 << 0;
+export const FAR    = 1 << 1;
+export const LEFT   = 1 << 2;
+export const RIGHT  = 1 << 3;
+export const BOTTOM = 1 << 4;
+export const TOP    = 1 << 5;
+export const BODY   = 1 << 6;
+export const APEX   = 1 << 7;
+
+// pathLines
+export const PATH         = 1 << 0;
+export const CENTER       = 1 << 1;
+export const CONTROLS     = 1 << 2;
+export const TANGENTS_IN  = 1 << 3;
+export const TANGENTS_OUT = 1 << 4;
+export const TANGENTS     = TANGENTS_IN | TANGENTS_OUT;
+export const HANDLES      = 1 << 5;
+
+// helmRigLines
+export const TRANSLATE = 1 << 0;
+export const ROTATE    = 1 << 1;
+
+// locusLines (HANDLE is the bridge's dot, not a line)
+export const HANDLE = 1 << 0;
+export const AIM    = 1 << 1;
+export const LOCUS  = 1 << 2;
+export const RING   = 1 << 3;
+
+// Semantic palette — normalised RGBA: red, lime, dodger blue; COLOR_DIM is
+// the alpha of a dimmed stroke (the helm rig's baseline).
+export const COLOR_X   = Object.freeze([1, 0, 0, 1]);
+export const COLOR_Y   = Object.freeze([0, 1, 0, 1]);
+export const COLOR_Z   = Object.freeze([30 / 255, 144 / 255, 1, 1]);
+export const COLOR_DIM = 110 / 255;
