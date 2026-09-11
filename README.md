@@ -18,20 +18,22 @@ import * as tree from '@nakednous/tree'
 
 ## Architecture
 
-`@nakednous/tree` is the bottom layer of a three-package stack. It knows nothing about renderers, the DOM, or p5 — it operates on plain arrays and `Float32Array` buffers throughout.
+`@nakednous/tree` is the bottom layer of a stack. It knows nothing about renderers, the DOM, or p5 — it operates on plain arrays and `Float32Array` buffers throughout.
 
 ```
   application
       │
       ▼
-  p5.tree.js        ← bridge: wires tree + ui into p5.js v2
+  twgl.tree · p5.tree · webgpu.tree   ← bridges: draw, the GPU ceremony, a framework adapter
+      │
+      ├── @nakednous/host  ← DOM transport: pointer, view, players, handles, devices, labels, orbit
       │
       ├── @nakednous/ui    ← DOM param panels, transport controls
       │
-      └── @nakednous/tree  ← this package: math, spaces, animation, visibility
+      └── @nakednous/tree  ← this package: math, spaces, animation, visibility, gizmo geometry
 ```
 
-The dependency direction is strict: `@nakednous/tree` never imports from the bridge or the DOM layer. This is what lets the same `PoseTrack` that drives a camera path also animate any object — headless, server-side, or in a future renderer.
+The dependency direction is strict: `@nakednous/tree` never imports from the host, the bridges, or the DOM layer; `host` and `ui` depend on `tree` only; a bridge depends on `tree` and `host`, never on another bridge. `@nakednous/*` never renders — rendering lives in the `*.tree` bridges. This is what lets the same `PoseTrack` that drives a camera path also animate any object — headless, server-side, or in a future renderer — and the same gizmo arrays draw through twgl, p5, or WebGPU.
 
 Source is organised into focused modules:
 
@@ -45,6 +47,7 @@ filter.js — input conditioning: the 1€ filter + absolute→rate differencing
 handle.js — constraint solver + ray primitives for interactive manipulators
 visibility.js — frustum planes and visibility tests
 camera.js — camera state (the CameraTrack keyframe shape) ↔ matrices, planes, and orbit edits
+gizmo.js  — line generators in twgl's arrays shape: axes, grid, cross, bulls-eye, ring, frustum, hermite, path, helm rig, locus, pane
 ```
 
 ---
@@ -538,6 +541,25 @@ c.value(out, DIRECTION)       // write the reported value into out(3)
 **Hit tests — the analytic pick.** Beside the solve primitives, which always write a point, three tests write nothing and return the ray parameter `t` of the nearest hit with `t ≥ 0`, or `Infinity`: `rayHitSphere(o, d, c, r)`, `rayHitCapsule(o, d, a, b, r)` (the segment `a→b` swept by `r`) and `rayHitRing(o, d, c, u, R, r, detail = 32)` (the circle of radius `R` about `c` in the plane ⊥ `u`, swept by tube radius `r`, as a capsule chain of `detail` links — chordal error `R · (1 − cos(π / detail))`, never degenerate edge-on). A ray starting inside hits at its exit, so a press from inside a proxy still grabs. These are what a host's controller picks with instead of a tagged render pass: unproject the pointer, convert the grab size to working units through `pixelRatio`, test every candidate, nearest `t` wins.
 
 **Constraint contract (extension seam).** A constraint is any object exposing `kind`, `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and optionally `scalar()` / `azEl(out2)` / `aim(ax,ay,az[, zx,zy,zz])` / `proxy(ox,oy,oz, dx,dy,dz, radius)` — the analytic pick: `t` or `Infinity` for a ray against the grab proxy of `radius` working units (built-in kinds: a sphere at the reported `POINT`; `DIAL`: the ring at the anchor with tube `radius`; a kind without one gets the sphere). The handle controller drives any conforming constraint, so a new kind — rotation, 6-DOF, or app-specific — implements this contract (portable, draw-free, its hit test included) plus a bridge-side locus draw, rather than forking the controller. The built-in `Constraint` is the reference implementation. Full design: [`handle-design.md`](./handle-design.md).
+
+---
+
+### Gizmo geometry
+
+`gizmo.js` generates the vertices a gizmo is made of — renderer-free, into a caller-owned arrays object in twgl's `arrays` shape, line lists (and one triangle list) that `createBufferInfoFromArrays` uploads as they are and a WebGPU vertex buffer is filled from. Drawing, colour state, HUD mode, textures and text stay in the bridges.
+
+```js
+import { createArrays, growArrays, capacityOf,
+         axesLines, gridLines, crossLines, bullsEyeLines, ringLines,
+         frustumLines, frustumCorners, hermiteLines,
+         pathLines, helmRigLines, locusLines, paneTris } from '@nakednous/tree'
+
+const out = createArrays(64, { color: true })       // { position, color, count }, the one allocating call
+let n = axesLines(out, { size: 100 })               // → the vertex count needed; writes min(n, capacity)
+if (n > capacityOf(out)) { growArrays(out, n); axesLines(out, { size: 100 }) }
+```
+
+Every generator is snprintf-style: it returns the count it needs, writes what fits and sets `out.count`, and states its count formula so a caller can pre-size exactly. With an `out.color` array, `axesLines` and `helmRigLines` write the semantic palette (`COLOR_X` · `COLOR_Y` · `COLOR_Z`, `COLOR_DIM` alpha for a dimmed stroke) and every other generator writes `opts.color`. The bit namespaces (`X` … `LABELS`, `NEAR` … `APEX`, `PATH` … `HANDLES`, `TRANSLATE` · `ROTATE`, `HANDLE` … `RING`) are gizmo-local. `frustumCorners` writes a camera's eight world-space corners (near face counter-clockwise from bottom-left, then far) from a camera state or a matrix-captured `{ mat4Eye, mat4Proj, ndcZMin }`; `pathLines` walks a track's own samplers; `helmRigLines` reads a helm's profile and activity; `locusLines` dispatches on a constraint's kind (or its own `locus(out, opts)`); `paneTris` is the textured quad with one upright uv orientation. Full design: [`gizmo-design.md`](./gizmo-design.md).
 
 ---
 
