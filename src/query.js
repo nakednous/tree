@@ -47,7 +47,7 @@
 
 'use strict';
 
-import { WORLD, EYE, NDC, SCREEN, MATRIX } from './constants.js';
+import { WORLD, EYE, NDC, SCREEN, MATRIX, CIRCLE, SQUARE } from './constants.js';
 import { qFromRotMat3x3 } from './quat.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -577,6 +577,63 @@ export function mapDirection(out, dx, dy, dz, from, to, m, vp, ndcZMin) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Rays and pointer hits
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Screen point → world ray: origin on the near plane (screen depth 0), unit
+ * direction toward the far plane (depth 1). Same bag and viewport contract as
+ * mapLocation; `m.mat4PVInv` must be filled by the caller.
+ *
+ * @param {number[]} outO    3-element origin.
+ * @param {number[]} outD    3-element unit direction.
+ * @param {number}   sx,sy   Screen point.
+ * @param {object}   m       Matrices bag — see module header.
+ * @param {number[]} vp      Viewport [x, y, w, h]; sign of h encodes screen-y direction.
+ * @param {number}   ndcZMin WEBGL (−1) or WEBGPU (0).
+ * @returns {number[]|null} outD, or null when the bag carries no mat4PVInv
+ *                          (singular P·V) or the ray has no length.
+ */
+export function unproject(outO, outD, sx, sy, m, vp, ndcZMin) {
+  const ipv = m.mat4PVInv;
+  if (!ipv) return null;
+  _screenToWorld(outO, sx, sy, 0, ipv, vp, ndcZMin);
+  _screenToWorld(outD, sx, sy, 1, ipv, vp, ndcZMin);
+  const dx=outD[0]-outO[0], dy=outD[1]-outO[1], dz=outD[2]-outO[2];
+  const l=Math.sqrt(dx*dx+dy*dy+dz*dz);
+  if (!(l > 0)) return null;
+  outD[0]=dx/l; outD[1]=dy/l; outD[2]=dz/l;
+  return outD;
+}
+
+const _hit = [0, 0, 0];   // pointerHit screen scratch
+
+/**
+ * Is the pointer within `radius` px of the projected world point (x, y, z)?
+ * `shape` is CIRCLE (Euclidean, default) or SQUARE (Chebyshev); the boundary
+ * hits. A point whose screen depth falls outside [0, 1] — behind the camera,
+ * before the near plane or beyond the far plane — never hits.
+ *
+ * @param {number}   px,py   Pointer, screen px.
+ * @param {number}   x,y,z   World point.
+ * @param {number}   radius  Hit radius, px.
+ * @param {object}   m       Matrices bag — see module header.
+ * @param {number[]} vp      Viewport [x, y, w, h]; sign of h encodes screen-y direction.
+ * @param {number}   ndcZMin WEBGL (−1) or WEBGPU (0).
+ * @param {number}   [shape=CIRCLE]  CIRCLE or SQUARE.
+ * @returns {boolean}
+ */
+export function pointerHit(px, py, x, y, z, radius, m, vp, ndcZMin, shape = CIRCLE) {
+  _worldToScreen(_hit, x, y, z, _ensurePV(m), vp, ndcZMin);
+  const d = _hit[2];
+  if (!(d >= 0 && d <= 1)) return false;
+  const dx = px - _hit[0], dy = py - _hit[1];
+  return shape === SQUARE
+    ? Math.abs(dx) <= radius && Math.abs(dy) <= radius
+    : dx*dx + dy*dy <= radius*radius;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // pixelRatio
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -627,6 +684,34 @@ export function mat4Pick(proj, px, py, vp) {
     proj[j*4]   = sx*a + tx*d;
     proj[j*4+1] = sy*b + ty*d;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Pick-id codec
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Pick id → colour: the 24-bit id packed into r, g, b as normalised floats,
+ * R the low byte, alpha 1. Id 0 is the background; ids run 1 … 2²⁴ − 1.
+ * @param {number[]} out  4-element destination.
+ * @param {number}   id   Integer id.
+ * @returns {number[]} out
+ */
+export function idToRgba(out, id) {
+  out[0] = (id & 255) / 255;
+  out[1] = ((id >> 8) & 255) / 255;
+  out[2] = ((id >> 16) & 255) / 255;
+  out[3] = 1;
+  return out;
+}
+
+/**
+ * Colour bytes → pick id, the inverse of idToRgba on a readback.
+ * @param {number} r,g,b  Bytes 0 … 255 (fractions truncated).
+ * @returns {number} id
+ */
+export function rgbaToId(r, g, b) {
+  return (r & 255) | ((g & 255) << 8) | ((b & 255) << 16);
 }
 
 // =========================================================================

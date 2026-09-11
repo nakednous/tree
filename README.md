@@ -33,7 +33,7 @@ import * as tree from '@nakednous/tree'
 
 The dependency direction is strict: `@nakednous/tree` never imports from the bridge or the DOM layer. This is what lets the same `PoseTrack` that drives a camera path also animate any object — headless, server-side, or in a future renderer.
 
-Source is organised into six focused modules:
+Source is organised into focused modules:
 
 ```
 form.js   — you have specs, you want a matrix
@@ -43,6 +43,8 @@ track.js  — spline math and keyframe animation state machines
 helm.js   — 6-DOF rate-stream integrator — the Track family's live-input sibling
 filter.js — input conditioning: the 1€ filter + absolute→rate differencing
 handle.js — constraint solver + ray primitives for interactive manipulators
+visibility.js — frustum planes and visibility tests
+camera.js — camera state (the CameraTrack keyframe shape) ↔ matrices, planes, and orbit edits
 ```
 
 ---
@@ -476,6 +478,45 @@ Three-state result: `VISIBLE` (fully inside), `SEMIVISIBLE` (intersecting), `INV
 
 ---
 
+### Camera state
+
+The camera is plain data — the `CameraTrack` keyframe shape — with pure functions between it and the matrices a draw uploads (`camera.js`). There is no camera object: a track evaluates into the state, a pose drives it, an orbit gesture edits it, and a renderer installs the matrices built from it.
+
+```js
+import { createCamera, cameraView, cameraEye, cameraProj, cameraPlanes, WEBGL } from '@nakednous/tree'
+
+const cam = createCamera({ eye: [0, 0, 500], center: [0, 0, 0], fov: Math.PI / 3, near: 0.1, far: 1000 })
+// { eye, center, up, fov | halfHeight, near, far } — fov xor halfHeight (perspective xor orthographic)
+
+// per-frame — zero allocation; aspect belongs to the viewport, never to the state
+cameraView(V, cam)                          // world → eye
+cameraEye(E, cam)                           // eye → world
+cameraProj(P, cam, width / height, WEBGL)   // mat4Persp from fov or mat4Ortho from halfHeight; null when both are null
+cameraPlanes(planes, cam, width / height)   // the six frustum planes — visibility straight from the state
+track.eval(cam)                             // a CameraTrack writes the state directly
+```
+
+Decomposers read the state back:
+
+```js
+cameraFromMat4(cam, E, P, WEBGL)   // eye, up, forward from E; the lens from P; the gaze distance |center − eye| is kept
+cameraFromPose(cam, pose)          // { pos, rot } → lookat at constant gaze distance; the lens untouched
+cameraToPose(pose, cam)            // lookat → { pos, rot } — the rotation of cameraEye, a helm's seed
+cameraCopy(out, cam)               // one state into another
+```
+
+Edits are in place and chainable — the arithmetic behind an orbit gesture, callable from a script just the same:
+
+```js
+cameraOrbit(cam, dAz, dEl, { maxEl })   // azimuth about the up hint, elevation clamped short of the pole; never rolls
+cameraDolly(cam, factor, { min, max })  // scales the gaze distance — or halfHeight under orthographic
+cameraPan(cam, dx, dy)                  // along the eye's right and up, world units (pixelRatio converts pixels)
+```
+
+Every function that needs the camera frame derives it through `mat4Eye`, so planes, poses and edits agree with `cameraEye` exactly — including the up re-seed when the view direction is parallel to the hint.
+
+---
+
 ### Manipulator constraints
 
 `handle.js` is the renderer-agnostic core of an interactive manipulator: ray-primitive intersections, az/el utilities, and a `Constraint` state machine. The `p5.tree` bridge wraps these into a draggable handle; this package supplies the math and the **contract** that makes the handle extensible.
@@ -514,7 +555,7 @@ qToAxisAngle
 
 **Mat4 arithmetic** (`query.js`):
 ```
-mat4Mul  mat4Invert  mat4Transpose  mat4MulPoint  mat4MulDir
+mat4Mul  mat4Invert  mat4MulPoint  mat4MulDir
 mat3NormalFromMat4  mat4Location  mat3Direction
 mat4PV  mat4MV
 ```
@@ -552,6 +593,20 @@ projLeft  projRight  projTop  projBottom
 
 **Pick matrix:** `mat4Pick(proj, px, py, vp)` — mutates a projection matrix in-place so that the pixel at `(px, py)` maps to the full NDC square, making a 1×1 FBO render contain exactly that pixel. Takes the same signed viewport `vp` as `mapLocation` — the y-convention is preserved automatically.
 
+**Pointer ray:** `unproject(outO, outD, sx, sy, m, vp, ndcZMin)` — a screen point as a world ray: origin on the near plane, unit direction toward the far plane. Same bag and signed viewport as `mapLocation` (`mat4PVInv` filled by the caller); `null` when the bag has no inverse. The point-at-depth form stays `mapLocation(SCREEN → WORLD)` with a depth in `z`.
+
+**Pointer hit:** `pointerHit(px, py, x, y, z, radius, m, vp, ndcZMin, shape = CIRCLE)` — is the pointer within `radius` px of the projected world point? `CIRCLE` (Euclidean) or `SQUARE` (Chebyshev), boundary inclusive; a point whose screen depth falls outside `[0, 1]` never hits.
+
+**Pick-id codec:** `idToRgba(out, id)` packs a 24-bit id into `[r, g, b, 1]` normalised floats, R the low byte; `rgbaToId(r, g, b)` decodes the bytes of a readback. Id `0` is the background; ids run `1 … 2²⁴ − 1`.
+
+**Camera state** (`camera.js`):
+```
+createCamera  cameraCopy
+cameraView  cameraEye  cameraProj  cameraPlanes
+cameraFromMat4  cameraFromPose  cameraToPose
+cameraOrbit  cameraDolly  cameraPan
+```
+
 ---
 
 ### Constants
@@ -573,6 +628,9 @@ INVISIBLE, VISIBLE, SEMIVISIBLE
 // Manipulator constraint kinds & report modes
 SPHERE, PLANE, AXIS, DIAL
 POINT, DIRECTION
+
+// Pointer-hit shapes
+CIRCLE, SQUARE
 
 // Basis vectors (frozen)
 ORIGIN, i, j, k, _i, _j, _k

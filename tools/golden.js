@@ -20,10 +20,15 @@
  * functions whose return is not the buffer (a ray parameter, a void). A
  * transcript builds one instance — `new Class(...args)` for a capitalised
  * export, `factory(...args)` otherwise — and runs its steps in order. `call`
- * is a method name, or one of three pseudo-calls: `$get` reads a public field
+ * is a method name, or one of four pseudo-calls: `$get` reads a public field
  * (args [name]); `$set` assigns one (args [name, value]); `f`, on a carrying-
- * function instance such as oneEuro's, invokes the instance itself. An omitted
- * `out` / `expect` means the return is not checked (void, or `this`).
+ * function instance such as oneEuro's, invokes the instance itself; `$fn`, on
+ * a plain-data instance such as a camera state, applies a free function with
+ * the instance as its first argument (args [name, ...rest]) and records its
+ * return even when that is the instance — the state after an in-place edit
+ * (a `$fn` step is that function's fixture for the coverage rule).
+ * An omitted `out` / `expect` means the return is not checked (void, or
+ * `this`).
  *
  * Comparison — a number passes when |a − b| ≤ tol · max(1, |a|, |b|), tol
  * taken from the case's class: exact for ints, enums, booleans, strings and
@@ -35,6 +40,10 @@
  * safety cases); { "$oneEuro": opts } builds a oneEuro filter; { "$hook":
  * name } installs a callback that logs `name`, and `$get` of `$hooks` reads and
  * clears that log.
+ *
+ * Hand-authored fixtures — `<module>.<source>.json`, such as golden/camera.p5.json
+ * for the p5 parity cases — carry the same shape, are replayed by the test, and
+ * are never regenerated here.
  *
  * @module tree/tools/golden
  * @license AGPL-3.0-only
@@ -154,10 +163,11 @@ function runTranscript(t) {
     if (s.call === '$get')      ret = live[0] === '$hooks' ? ctx.hooks.splice(0) : inst[live[0]];
     else if (s.call === '$set') inst[live[0]] = live[1];
     else if (s.call === 'f')    ret = inst(...live);
+    else if (s.call === '$fn')  ret = tree[live[0]](inst, ...live.slice(1));
     else                        ret = inst[s.call](...live);
     const step = { call: s.call };
     if (s.args)  step.args = encode(s.args);
-    if (s.call !== '$set' && ret !== undefined && ret !== inst) step.expect = encode(ret);
+    if (s.call !== '$set' && ret !== undefined && (ret !== inst || s.call === '$fn')) step.expect = encode(ret);
     if (s.writes) { step.writes = {}; for (const i of s.writes) step.writes[i] = encode(live[i]); }
     if (s.tol) step.tol = s.tol;
     return step;
@@ -230,6 +240,7 @@ const constants = {
     'INVISIBLE', 'VISIBLE', 'SEMIVISIBLE',
     'ORIGIN', 'i', 'j', 'k', '_i', '_j', '_k',
     'SPHERE', 'PLANE', 'AXIS', 'DIAL', 'POINT', 'DIRECTION',
+    'CIRCLE', 'SQUARE',
   ],
 };
 
@@ -407,7 +418,7 @@ const form = {
 // query
 // =========================================================================
 
-const { WORLD, EYE, NDC, SCREEN, MATRIX } = tree;
+const { WORLD, EYE, NDC, SCREEN, MATRIX, CIRCLE, SQUARE } = tree;
 
 // Reference matrices — a 60° 4:3 perspective, a symmetric ortho, a generic camera.
 const P     = tree.mat4Persp([], ...frustum(PI / 3, 4 / 3, 0.1), 0.1, 100, WEBGL);
@@ -431,6 +442,8 @@ const SING  = tree.mat4FromScale([], 0, 1, 1);                        // singula
 const bag    = { mat4Proj: P, mat4View: V, mat4Eye: E, mat4PV: PV, mat4PVInv: PVInv, fromFrame: F, toFrameInv: GInv };
 const PVgpu  = tree.mat4Mul([], Pgpu, V);
 const bagGpu = { ...bag, mat4Proj: Pgpu, mat4PV: PVgpu, mat4PVInv: tree.mat4Invert([], PVgpu) };
+const PVo    = tree.mat4Mul([], O, V);
+const bagO   = { mat4Proj: O, mat4View: V, mat4PV: PVo, mat4PVInv: tree.mat4Invert([], PVo) };   // orthographic
 const DOWN = [0, 480, 640, -480];   // screen y-down (DOM)
 const UP   = [0, 0, 640, 480];      // screen y-up (gl_FragCoord)
 const OFF  = [10, 20, 300, 200];    // offset sub-viewport, y-up
@@ -520,6 +533,28 @@ const query = {
     mat4ToTranslation: f32([[Z3, F], [Z3, I16]]),
     mat4ToScale: f32([[Z3, F], [Z3, S234], [Z3, tree.mat4FromTRS([], 0, 0, 0, ...Q.g, 2, 3, 4)]]),
     mat4ToRotation: f32([[Z4, I16], [Z4, F], [Z4, tree.mat4FromTRS([], 0, 0, 0, ...Q.g, 2, 3, 4)], [Z4, tree.qToMat4([], Q.x180)]]),
+    unproject: f32([
+      ...[[320, 240], [0, 0], [640, 0], [0, 480], [640, 480]].map(([sx, sy]) => [Z3, Z3, sx, sy, bag, DOWN, WEBGL]),   // centre and corners
+      [Z3, Z3, 320, 240, bagGpu, DOWN, WEBGPU], [Z3, Z3, 0, 0, bagGpu, DOWN, WEBGPU],
+      [Z3, Z3, 0, 0, bag, UP, WEBGL], [Z3, Z3, 100, 50, bag, OFF, WEBGL],
+      ...[[320, 240], [0, 0], [640, 480]].map(([sx, sy]) => [Z3, Z3, sx, sy, bagO, DOWN, WEBGL]),                   // orthographic: parallel rays
+      [Z3, Z3, 320, 240, { mat4Proj: P, mat4View: V }, DOWN, WEBGL],                                                 // no mat4PVInv: null
+    ], { writes: [0, 1] }),
+    pointerHit: exact([
+      [sp[0], sp[1], ...p, 10, bag, DOWN, WEBGL],                                    // dead centre
+      [sp[0] + 10, sp[1], ...p, 10, bag, DOWN, WEBGL],                               // on the circle: hits
+      [sp[0] + 10.01, sp[1], ...p, 10, bag, DOWN, WEBGL],                            // just outside
+      [sp[0] + 7, sp[1] + 7, ...p, 10, bag, DOWN, WEBGL],                            // diagonal, inside
+      [sp[0] + 10, sp[1] + 10, ...p, 10, bag, DOWN, WEBGL],                          // the square's corner: the circle misses
+      [sp[0] + 10, sp[1] + 10, ...p, 10, bag, DOWN, WEBGL, SQUARE],                  // the square hits
+      [sp[0] + 10.01, sp[1], ...p, 10, bag, DOWN, WEBGL, SQUARE],
+      [sp[0] + 7, sp[1] + 7, ...p, 10, bag, DOWN, WEBGL, CIRCLE],
+      [spGpu[0] + 10, spGpu[1], ...p, 10, bagGpu, DOWN, WEBGPU],
+      [320, 240, 6, 7, 10, 1e9, bag, DOWN, WEBGL],                                   // behind the camera: never
+      [320, 240, -300, -99, -500, 1e9, bag, DOWN, WEBGL],                            // beyond the far plane: never
+    ]),
+    idToRgba: f64([[Z4, 0], [Z4, 1], [Z4, 255], [Z4, 256], [Z4, 65536], [Z4, 2 ** 24 - 1], [Z4, 123456], [Z4, 2 ** 24 + 1]]),   // 2²⁴ + 1 wraps to 1
+    rgbaToId: exact([[0, 0, 0], [1, 0, 0], [255, 0, 0], [0, 1, 0], [0, 0, 1], [255, 255, 255], [64, 226, 1], [1.9, 0, 0]]),   // 123456; fractions truncated
   },
 };
 
@@ -976,10 +1011,99 @@ const visibility = {
 };
 
 // =========================================================================
+// camera
+// =========================================================================
+
+const camDef   = tree.createCamera();
+const camA     = tree.createCamera({ eye: [3, 4, 5], center: [0, 1, 0], up: [0, 2, 0], fov: PI / 4, near: 1, far: 50 });
+const camOrtho = tree.createCamera({ eye: [3, 4, 5], center: [0, 1, 0], halfHeight: 2, near: 0.5, far: 20 });
+const camZup   = tree.createCamera({ eye: [-2, 1, -3], center: [1, 2, 3], up: [0, 0, 1], fov: 1.2 });
+const camPole  = tree.createCamera({ eye: [0, 5, 0], center: [0, 0, 0] });                  // up ∥ view direction: re-seeded
+const camNone  = tree.createCamera({ fov: null });                                         // no lens
+const camDeg   = tree.createCamera({ eye: [1, 1, 1], center: [1, 1, 1] });                  // degenerate gaze distance
+const CAMS     = [camDef, camA, camOrtho, camZup, camPole];
+const camE = (c) => tree.cameraEye([], c);
+const camP = (c, ndc, ys) => tree.cameraProj([], c, 4 / 3, ndc, ys);
+
+const camera = {
+  functions: {
+    createCamera: f64([
+      [], [{}],
+      [{ eye: [3, 4, 5], center: [0, 1, 0], up: [0, 2, 0], fov: PI / 4, near: 1, far: 50 }],
+      [{ halfHeight: 2 }],                                                          // orthographic: fov null
+      [{ fov: null, halfHeight: 2 }], [{ fov: 1, halfHeight: 2 }],                  // as given
+      [{ eye: [1, 2, 3], near: '1', far: null }],                                   // non-number clip distances → defaults
+    ]),
+    cameraCopy: f64([[camDef, camA], [camA, camOrtho], [camOrtho, camNone]]),
+    cameraView: f32(CAMS.map(c => [M16, c])),
+    cameraEye:  f32(CAMS.map(c => [M16, c])),
+    cameraProj: f32([
+      ...CAMS.flatMap(c => [[M16, c, 4 / 3, WEBGL], [M16, c, 4 / 3, WEBGPU]]),
+      [M16, camA, 1, WEBGL], [M16, camA, 4 / 3, WEBGL, -1], [M16, camOrtho, 4 / 3, WEBGL, -1],   // square; NDC y-down
+      [M16, camNone, 4 / 3, WEBGL],                                                              // no lens: null, out untouched
+    ], { writes: [0] }),
+    cameraPlanes: f64([
+      ...CAMS.map(c => [P24, c, 4 / 3]), [P24, camA, 1], [P24, camOrtho, 2],
+      [P24, camNone, 4 / 3],                                                                     // no lens: null
+    ]),
+    cameraFromMat4: f32([
+      ...[[camA, WEBGL, 1], [camA, WEBGPU, 1], [camOrtho, WEBGL, 1], [camOrtho, WEBGPU, 1],
+          [camZup, WEBGL, 1], [camPole, WEBGL, 1], [camA, WEBGL, -1], [camOrtho, WEBGL, -1]]
+        .map(([c, ndc, ys]) => [c, camE(c), camP(c, ndc, ys), ndc]),                            // round trips: the state reproduces itself
+      [camDef, camE(camA), camP(camA, WEBGL, 1), WEBGL],                                         // gaze distance kept from the previous state
+      [camDeg, camE(camA), camP(camA, WEBGL, 1), WEBGL],                                         // degenerate: distance 1
+      [camA, I16, camP(camOrtho, WEBGL, 1), WEBGL],                                              // identity eye: forward −Z, up +Y
+    ]),
+    cameraFromPose: f64([
+      [camA, POSE0],                                                                             // identity: forward −Z, distance kept
+      [camA, { pos: [1, 2, 3], rot: Q.z90 }], [camOrtho, { pos: [0, 0, 0], rot: Q.g }],           // lens untouched
+      [camDeg, { pos: [1, 2, 3], rot: Q.x90 }],                                                  // degenerate: distance 1
+      ...CAMS.map(c => [c, tree.cameraToPose({ pos: [0, 0, 0], rot: [0, 0, 0, 1] }, c)]),       // cameraToPose → cameraFromPose reproduces eye and center
+    ]),
+    cameraToPose: f64(CAMS.map(c => [POSE0, c])),
+  },
+  transcripts: [
+    { name: 'camera — orbit: azimuth about up, elevation to the guard, no roll', class: 'createCamera', args: [{ eye: [0, 0, 5], center: [0, 0, 0] }], steps: [
+      { call: '$fn', args: ['cameraOrbit', PI / 2, 0] },                        // eye → +X
+      { call: '$fn', args: ['cameraOrbit', 0, PI / 4] },
+      { call: '$fn', args: ['cameraOrbit', 0, 10] },                            // clamped to maxEl
+      { call: '$fn', args: ['cameraOrbit', 0, -10] },                           // and to −maxEl
+      { call: '$fn', args: ['cameraOrbit', 0.3, 0] },                           // azimuth keeps the elevation and the distance
+      { call: '$fn', args: ['cameraOrbit', 0, 5, { maxEl: PI / 4 }] },
+      { call: '$fn', args: ['cameraOrbit', 0, 0] },                             // no-op
+      { call: '$fn', args: ['cameraOrbit', -1.2, -0.4] },
+    ] },
+    { name: 'camera — orbit in a z-up world with a non-unit hint', class: 'createCamera', args: [{ eye: [3, 4, 5], center: [0, 1, 0], up: [0, 0, 2] }], steps: [
+      { call: '$fn', args: ['cameraOrbit', 1.1, 0] }, { call: '$fn', args: ['cameraOrbit', 0, 0.2] }, { call: '$fn', args: ['cameraOrbit', -0.5, -0.9] },
+    ] },
+    { name: 'camera — orbit from the pole: the guard pulls the eye inside', class: 'createCamera', args: [{ eye: [0, 5, 0], center: [0, 0, 0] }], steps: [
+      { call: '$fn', args: ['cameraOrbit', 0, 0] },                             // stays at the pole
+      { call: '$fn', args: ['cameraOrbit', 0.1, 0] },
+      { call: '$fn', args: ['cameraOrbit', 0, -0.5] },
+    ] },
+    { name: 'camera — dolly: gaze distance to the clamps under perspective, halfHeight under orthographic', class: 'createCamera', args: [{ eye: [0, 0, 10], center: [0, 0, 0] }], steps: [
+      { call: '$fn', args: ['cameraDolly', 0.5] },
+      { call: '$fn', args: ['cameraDolly', 0.1, { min: 2 }] },
+      { call: '$fn', args: ['cameraDolly', 100, { max: 50 }] },
+      { call: '$fn', args: ['cameraDolly', 0] }, { call: '$fn', args: ['cameraDolly', -1] },    // collapse: no-op
+      { call: '$set', args: ['fov', null] }, { call: '$set', args: ['halfHeight', 3] },
+      { call: '$fn', args: ['cameraDolly', 2] },                                // orthographic: halfHeight scales, the eye stays
+      { call: '$fn', args: ['cameraDolly', 10, { max: 20 }] },
+      { call: '$set', args: ['fov', 1] },
+      { call: '$fn', args: ['cameraDolly', 0.5] },                              // fov wins: the eye moves
+    ] },
+    { name: 'camera — pan along the eye\'s right and up, then an orbit', class: 'createCamera', args: [{ eye: [3, 4, 5], center: [0, 1, 0] }], steps: [
+      { call: '$fn', args: ['cameraPan', 1, 0] }, { call: '$fn', args: ['cameraPan', 0, 2] }, { call: '$fn', args: ['cameraPan', -1, -2] },   // back to the start
+      { call: '$fn', args: ['cameraOrbit', 0.4, 0.3] }, { call: '$fn', args: ['cameraPan', 1.5, -0.5] },
+    ] },
+  ],
+};
+
+// =========================================================================
 // main
 // =========================================================================
 
-const MODULES = { constants, quat, filter, form, query, track, handle, helm, visibility };
+const MODULES = { constants, quat, filter, form, query, track, handle, helm, visibility, camera };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const [name, spec] of Object.entries(MODULES)) generate(name, spec);

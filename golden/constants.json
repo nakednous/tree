@@ -26,6 +26,8 @@
     "AXIS": 2,
     "DIAL": 3,
     "POINT": 0,
-    "DIRECTION": 1
+    "DIRECTION": 1,
+    "CIRCLE": 0,
+    "SQUARE": 1
   }
 }

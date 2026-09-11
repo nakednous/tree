@@ -43,3 +43,7 @@ export const DIAL   = 3;
 // Handle report modes
 export const POINT     = 0;
 export const DIRECTION = 1;
+
+// Pointer-hit shapes (pointerHit)
+export const CIRCLE = 0;
+export const SQUARE = 1;

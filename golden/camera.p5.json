@@ -1,0 +1,10 @@
+{
+  "module": "camera",
+  "source": "p5",
+  "note": "Hand-authored p5 parity cases, generated from a p5 sketch, not by tools/golden.js. A lookat set through camera() and perspective() (or ortho()) under p5's y-down projection (ndcYSign = -1); the renderer's eye and projection matrices read back as 16 column-major numbers; the six planes from p5.tree's computePlanes as 24 numbers. cameraPlanes: args [24 zeros, cam, aspect], out = the p5 planes. cameraFromMat4: args [cam0, mat4Eye, mat4Proj, -1] where cam0 is any state whose gaze distance equals |center - eye| of the lookat, out = the lookat state. Replayed by npm test; empty cases pass.",
+  "tolerance": {"exact": 0, "f64": 1e-6, "f32": 1e-5},
+  "functions": {
+    "cameraPlanes": {"tol": "f32", "cases": []},
+    "cameraFromMat4": {"tol": "f32", "cases": []}
+  }
+}

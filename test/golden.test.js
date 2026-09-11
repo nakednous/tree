@@ -68,6 +68,7 @@ function runTranscript(t, tolerance) {
     if (s.call === '$get')      ret = live[0] === '$hooks' ? ctx.hooks.splice(0) : inst[live[0]];
     else if (s.call === '$set') inst[live[0]] = live[1];
     else if (s.call === 'f')    ret = inst(...live);
+    else if (s.call === '$fn')  ret = tree[live[0]](inst, ...live.slice(1));
     else                        ret = inst[s.call](...live);
     if ('expect' in s) close(ret, decode(s.expect), tol, `${path}.expect`);
     for (const i of Object.keys(s.writes ?? {})) close(live[i], decode(s.writes[i]), tol, `${path}.writes[${i}]`);
@@ -93,6 +94,7 @@ for (const file of files) {
     }
     for (const tr of fx.transcripts ?? []) {
       covered.add(tr.class);
+      for (const s of tr.steps) if (s.call === '$fn') covered.add(s.args[0]);
       await t.test(tr.name, () => runTranscript(tr, fx.tolerance));
     }
   });
