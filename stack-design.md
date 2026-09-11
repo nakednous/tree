@@ -603,9 +603,16 @@ validated in Chromium. An item stays open until its experiment is named *done* h
   edge, under extreme aspect, in orthographic? Does the capsule-chain ring match the torus
   edge-on? *Experiment:* one sketch, both paths side by side, a miss counter across a
   scripted sweep of pointer positions. Also decides the chain's segment count.
+  **Done** (2026-09-11, `p5.tree.exp/handle-experiments/e12`): in the default,
+  orthographic, 1280×240 and grazing views the two paths disagree only on a pixel-wide
+  outline around each proxy; the ring's chain matches the torus at **detail 32**, which
+  stays the default; the grab feels identical by hand.
 - **Nearest-`t` versus depth-buffer ordering.** Overlapping members resolved by `t` must
   match the rasterized winner, including a ring in front of a sphere at grazing angles.
-  *Experiment:* the clustered TRS gizmo (`e3`) rerun on the analytic router.
+  *Experiment:* the clustered TRS gizmo (`e3`) rerun on the analytic router. **Done**
+  (2026-09-11, `e12`): the cluster's overlaps and the ring in front of and behind the
+  sphere at the grazing view name the same nearest member on both paths; no ordering
+  miss away from a proxy edge.
 - **Snprintf-style generators.** Is the capacity-and-return contract comfortable in
   practice, or does every caller want a sizing call first? *Experiment:* `trackPath` with a
   growing keyframe count — the one gizmo whose size changes at run time.
