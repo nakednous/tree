@@ -120,7 +120,7 @@ export {
 } from './quat.js';
 
 import {
-  qSlerp, qNlerp, qMul, qFromAxisAngle, qFromLookDir, qFromRotMat3x3, qToMat4,
+  qNormalize, qSlerp, qNlerp, qMul, qFromAxisAngle, qFromLookDir, qFromRotMat3x3, qToMat4,
 } from './quat.js';
 
 import { mat4Eye as _buildMat4Eye } from './form.js';
@@ -336,9 +336,9 @@ const _EULER_ORDERS = new Set(['XYZ','XZY','YXZ','YZX','ZXY','ZYX']);
 function _parseQuat(v) {
   if (!v) return null;
 
-  // [x,y,z,w]
-  if (Array.isArray(v) && v.length === 4) return [v[0],v[1],v[2],v[3]];
-  if (ArrayBuffer.isView(v) && v.length >= 4) return [v[0],v[1],v[2],v[3]];
+  // [x,y,z,w] — normalised like every other form
+  if (Array.isArray(v) && v.length === 4) return qNormalize([v[0],v[1],v[2],v[3]]);
+  if (ArrayBuffer.isView(v) && v.length >= 4) return qNormalize([v[0],v[1],v[2],v[3]]);
 
   if (typeof v !== 'object') return null;
 

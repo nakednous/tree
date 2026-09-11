@@ -1,0 +1,304 @@
+{
+  "module": "handle",
+  "tolerance": {"exact": 0, "f64": 0.000001, "f32": 0.00001},
+  "functions": {
+    "raySphere": {
+      "tol": "f64",
+      "cases": [
+        {"args": [[0, 0, 0], 0, 0, 5, 0, 0, -1, 0, 0, 0, 1], "out": 4, "writes": {"0": [0, 0, 1]}},
+        {"args": [[0, 0, 0], 0, 0, 0, 0, 0, -1, 0, 0, 0, 1], "out": 1, "writes": {"0": [0, 0, -1]}},
+        {"args": [[0, 0, 0], 0, 3, 5, 0, 0, -1, 0, 0, 0, 1], "out": 5, "writes": {"0": [0, 1, 0]}},
+        {"args": [[0, 0, 0], 0, 1, 5, 0, 0, -1, 0, 0, 0, 1], "out": 5, "writes": {"0": [0, 1, 0]}},
+        {
+          "args": [[0, 0, 0], 3, 4, 5, -0.7071067811865476, 0, -0.7071067811865476, 1, 0, 0, 2],
+          "out": 4.949747468305833,
+          "writes": {"0": [0.33741084355092055, 1.7669044171975445, 0.662589156449079]}
+        },
+        {"args": [[0, 0, 0], 0, 0, 5, 0, 0, 1, 0, 0, 0, 1], "out": -4, "writes": {"0": [0, 0, 1]}}
+      ]
+    },
+    "rayPlane": {
+      "tol": "f64",
+      "cases": [
+        {"args": [[0, 0, 0], 0, 5, 0, 0, -1, 0, 0, 1, 0, 0, 1, 0], "out": 4, "writes": {"0": [0, 1, 0]}},
+        {
+          "args": [[0, 0, 0], 3, 4, 5, -0.7071067811865476, -0.7071067811865476, 0, 0, 0, 0, 0, 1, 0],
+          "out": 5.65685424949238,
+          "writes": {"0": [-1, 0, 5]}
+        },
+        {
+          "args": [[0, 0, 0], 0, 5, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
+          "out": {"$num": "Infinity"},
+          "writes": {"0": [0, 0, 0]}
+        },
+        {
+          "args": [[7, 7, 7], 0, 5, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0],
+          "out": {"$num": "Infinity"},
+          "writes": {"0": [7, 7, 7]}
+        },
+        {"args": [[0, 0, 0], 0, 5, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], "out": -4, "writes": {"0": [0, 1, 0]}}
+      ]
+    },
+    "rayClosestPointOnAxis": {
+      "tol": "f64",
+      "cases": [
+        {"args": [[0, 0, 0], 5, 1, 0, -1, 0, 0, 0, 0, 0, 0, 1, 0], "out": 1, "writes": {"0": [0, 1, 0]}},
+        {"args": [[0, 0, 0], 5, 0, 3, -1, 0, 0, 0, 0, 0, 0, 1, 0], "out": 0, "writes": {"0": [0, 0, 0]}},
+        {"args": [[0, 0, 0], 0, 0, 5, 0, 0, -1, 0, 0, 0, 1, 0, 0], "out": 0, "writes": {"0": [0, 0, 0]}},
+        {"args": [[0, 0, 0], 2, 3, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0], "out": 3, "writes": {"0": [0, 3, 0]}},
+        {
+          "args": [[0, 0, 0], 1, 1, 1, 0.7071067811865476, 0.7071067811865476, 0, -1, 0, 0, 0, 0, 1],
+          "out": 1,
+          "writes": {"0": [-1, 0, 1]}
+        }
+      ]
+    },
+    "dirFromAzEl": {
+      "tol": "f64",
+      "cases": [
+        {"args": [[0, 0, 0], 0, 0], "out": [1, 0, 0]},
+        {"args": [[0, 0, 0], 1.5707963267948966, 0], "out": [6.123233995736766e-17, 0, 1]},
+        {"args": [[0, 0, 0], 0, 1.5707963267948966], "out": [6.123233995736766e-17, 1, 0]},
+        {
+          "args": [[0, 0, 0], 3.141592653589793, -1.5707963267948966],
+          "out": [-6.123233995736766e-17, -1, 7.498798913309288e-33]
+        },
+        {"args": [[0, 0, 0], 0.7, -0.3], "out": [0.7306816499355124, -0.29552020666133955, 0.6154446635582734]}
+      ]
+    },
+    "azElFromDir": {
+      "tol": "f64",
+      "cases": [
+        {"args": [[0, 0], 1, 0, 0], "out": [0, 0]},
+        {"args": [[0, 0], 0, 0, 1], "out": [1.5707963267948966, 0]},
+        {"args": [[0, 0], 0, 1, 0], "out": [0, 1.5707963267948966]},
+        {"args": [[0, 0], -1, 0, 0], "out": [3.141592653589793, 0]},
+        {"args": [[0, 0], 0.7306816499355124, -0.29552020666133955, 0.6154446635582734], "out": [0.7, -0.3]},
+        {"args": [[0, 0], 0, 1.5, 0], "out": [0, 1.5707963267948966]}
+      ]
+    }
+  },
+  "transcripts": [
+    {
+      "name": "Constraint SPHERE — direction state, value modes, seed, azEl, live radius",
+      "class": "Constraint",
+      "args": [0, {"radius": 2, "anchor": [1, 0, 0]}],
+      "tol": "f64",
+      "steps": [
+        {"call": "$get", "args": ["kind"], "expect": 0},
+        {"call": "$get", "args": ["anchor"], "expect": [1, 0, 0]},
+        {"call": "$get", "args": ["dir"], "expect": [0, 0, 1]},
+        {"call": "$get", "args": ["radius"], "expect": 2},
+        {"call": "$get", "args": ["report"], "expect": 1},
+        {"call": "$get", "args": ["min"], "expect": -1},
+        {"call": "$get", "args": ["max"], "expect": 1},
+        {"call": "scalar", "expect": {"$num": "NaN"}},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 0, 1]},
+        {"call": "value", "args": [[0, 0, 0], 0], "expect": [1, 0, 2]},
+        {"call": "solve", "args": [1, 0, 5, 0, 0, -1]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 0, 1]},
+        {"call": "value", "args": [[0, 0, 0], 0], "expect": [1, 0, 2]},
+        {"call": "azEl", "args": [[0, 0]], "expect": [1.5707963267948966, 0]},
+        {"call": "solve", "args": [4, 2, 5, -0.7071067811865476, 0, -0.7071067811865476]},
+        {
+          "call": "value",
+          "args": [[0, 0, 0]],
+          "expect": [-0.40824829046386335, 0.8164965809277259, 0.4082482904638626]
+        },
+        {
+          "call": "value",
+          "args": [[0, 0, 0], 0],
+          "expect": [0.1835034190722733, 1.6329931618554518, 0.8164965809277251]
+        },
+        {"call": "azEl", "args": [[0, 0]], "expect": [2.3561944901923457, 0.9553166181245091]},
+        {"call": "solve", "args": [1, 3, 5, 0, 0, -1]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 0]},
+        {"call": "seed", "args": [3, 0, 0]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [1, 0, 0]},
+        {"call": "seed", "args": [1, 0, 0]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [1, 0, 0]},
+        {"call": "seed", "args": [1, -4, 0]},
+        {"call": "azEl", "args": [[0, 0]], "expect": [0, -1.5707963267948966]},
+        {"call": "$set", "args": ["radius", 5]},
+        {"call": "value", "args": [[0, 0, 0], 0], "expect": [1, -5, 0]},
+        {"call": "$set", "args": ["radius", "x"]},
+        {"call": "$get", "args": ["radius"], "expect": 5},
+        {"call": "aim", "args": [0, 1, 0]},
+        {"call": "$get", "args": ["dir"], "expect": [0, -1, 0]},
+        {"call": "$get", "args": ["pt"], "expect": [1, 2, 0]}
+      ]
+    },
+    {
+      "name": "Constraint PLANE — point state, parallel ray keeps last, seed projects, aim re-projects",
+      "class": "Constraint",
+      "args": [1, {"anchor": [0, 1, 0], "normal": [0, 2, 0]}],
+      "tol": "f64",
+      "steps": [
+        {"call": "$get", "args": ["kind"], "expect": 1},
+        {"call": "$get", "args": ["n"], "expect": [0, 1, 0]},
+        {"call": "$get", "args": ["pt"], "expect": [0, 1, 0]},
+        {"call": "$get", "args": ["report"], "expect": 0},
+        {"call": "solve", "args": [0, 5, 0, 0, -1, 0]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 0]},
+        {"call": "solve", "args": [3, 4, 5, -0.7071067811865476, -0.7071067811865476, 0]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 5]},
+        {"call": "value", "args": [[0, 0, 0], 1], "expect": [0, 1, 5]},
+        {"call": "solve", "args": [0, 5, 0, 1, 0, 0]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 5]},
+        {"call": "seed", "args": [3, 7, -2]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [3, 1, -2]},
+        {"call": "aim", "args": [1, 0, 0]},
+        {"call": "$get", "args": ["n"], "expect": [1, 0, 0]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, -2]},
+        {"call": "aim", "args": [0, 0, 0]},
+        {"call": "$get", "args": ["n"], "expect": [1, 0, 0]},
+        {"call": "aim", "args": [0, 0, -3]},
+        {"call": "$get", "args": ["n"], "expect": [0, 0, -1]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 0]},
+        {"call": "scalar", "expect": {"$num": "NaN"}}
+      ]
+    },
+    {
+      "name": "Constraint AXIS — scalar t, extent clamp, parallel ray, seed, aim preserves t",
+      "class": "Constraint",
+      "args": [2, {"axis": [0, 3, 0], "extent": [-2, 4]}],
+      "tol": "f64",
+      "steps": [
+        {"call": "$get", "args": ["kind"], "expect": 2},
+        {"call": "$get", "args": ["u"], "expect": [0, 1, 0]},
+        {"call": "$get", "args": ["min"], "expect": -2},
+        {"call": "$get", "args": ["max"], "expect": 4},
+        {"call": "scalar", "expect": 0},
+        {"call": "solve", "args": [5, 1, 0, -1, 0, 0]},
+        {"call": "scalar", "expect": 1},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 0]},
+        {"call": "solve", "args": [5, 9, 0, -1, 0, 0]},
+        {"call": "scalar", "expect": 4},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 4, 0]},
+        {"call": "solve", "args": [5, -9, 0, -1, 0, 0]},
+        {"call": "scalar", "expect": -2},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, -2, 0]},
+        {"call": "solve", "args": [2, 3, 0, 0, 1, 0]},
+        {"call": "scalar", "expect": 3},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 3, 0]},
+        {"call": "solve", "args": [1, 1, 1, 0.7071067811865476, 0, -0.7071067811865476]},
+        {"call": "scalar", "expect": 1},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 0]},
+        {"call": "seed", "args": [9, 2.5, 9]},
+        {"call": "scalar", "expect": 2.5},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 2.5, 0]},
+        {"call": "seed", "args": [0, 9, 0]},
+        {"call": "scalar", "expect": 4},
+        {"call": "aim", "args": [2, 0, 0]},
+        {"call": "$get", "args": ["u"], "expect": [1, 0, 0]},
+        {"call": "scalar", "expect": 4},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [4, 0, 0]},
+        {"call": "aim", "args": [0, 0, 0]},
+        {"call": "$get", "args": ["u"], "expect": [1, 0, 0]},
+        {"call": "$set", "args": ["max", 1]},
+        {"call": "solve", "args": [5, 3, 0, -1, 0, 0]},
+        {"call": "scalar", "expect": 1}
+      ]
+    },
+    {
+      "name": "Constraint DIAL — winding θ, face-on and edge-on solves, seed nearest winding, aim rebuilds the basis",
+      "class": "Constraint",
+      "args": [3, {"axis": [0, 0, 1], "radius": 2, "zero": [1, 0, 0]}],
+      "tol": "f64",
+      "steps": [
+        {"call": "$get", "args": ["kind"], "expect": 3},
+        {"call": "$get", "args": ["u"], "expect": [0, 0, 1]},
+        {"call": "$get", "args": ["r0"], "expect": [1, 0, 0]},
+        {"call": "$get", "args": ["r1"], "expect": [0, 1, 0]},
+        {"call": "$get", "args": ["min"], "expect": {"$num": "-Infinity"}},
+        {"call": "$get", "args": ["max"], "expect": {"$num": "Infinity"}},
+        {"call": "scalar", "expect": 0},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [2, 0, 0]},
+        {"call": "value", "args": [[0, 0, 0], 1], "expect": [1, 0, 0]},
+        {"call": "solve", "args": [0, 2, 5, 0, 0, -1]},
+        {"call": "scalar", "expect": 1.5707963267948966},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [1.2246467991473532e-16, 2, 0]},
+        {"call": "value", "args": [[0, 0, 0], 1], "expect": [6.123233995736766e-17, 1, 0]},
+        {"call": "solve", "args": [-2, 0, 5, 0, 0, -1]},
+        {"call": "scalar", "expect": 3.141592653589793},
+        {"call": "solve", "args": [0, -2, 5, 0, 0, -1]},
+        {"call": "scalar", "expect": 4.71238898038469},
+        {"call": "solve", "args": [2, 0, 5, 0, 0, -1]},
+        {"call": "scalar", "expect": 6.283185307179586},
+        {"call": "solve", "args": [0, -2, 5, 0, 0, -1]},
+        {"call": "scalar", "expect": 4.71238898038469},
+        {"call": "solve", "args": [5, 0, 0, -1, 0, 0]},
+        {"call": "scalar", "expect": 7.21238898038469},
+        {"call": "solve", "args": [5, 1, 0, -0.9987523388778445, 0, 0.04993761694389223]},
+        {"call": "scalar", "expect": 6.700880727306064},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [1.82805246253373, 0.8113101714044793, 0]},
+        {"call": "seed", "args": [0, -2, 0]},
+        {"call": "scalar", "expect": 4.71238898038469},
+        {"call": "seed", "args": [0, 0, 0]},
+        {"call": "scalar", "expect": 4.71238898038469},
+        {"call": "$set", "args": ["radius", 3]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [-5.51091059616309e-16, -3, 0]},
+        {"call": "$get", "args": ["pt"], "expect": [-5.51091059616309e-16, -3, 0]},
+        {"call": "aim", "args": [0, 1, 0]},
+        {"call": "$get", "args": ["u"], "expect": [0, 1, 0]},
+        {"call": "$get", "args": ["r0"], "expect": [0, 0, 1]},
+        {"call": "$get", "args": ["r1"], "expect": [1, 0, 0]},
+        {"call": "scalar", "expect": 4.71238898038469},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [-3, 0, -5.51091059616309e-16]},
+        {"call": "aim", "args": [0, 1, 0, 0, 0, 1]},
+        {"call": "$get", "args": ["r0"], "expect": [0, 0, 1]},
+        {"call": "$get", "args": ["r1"], "expect": [1, 0, 0]},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [-3, 0, -5.51091059616309e-16]},
+        {"call": "aim", "args": [0, 1, 0, 0, 5, 0]},
+        {"call": "$get", "args": ["r0"], "expect": [0, 0, 1]},
+        {"call": "$set", "args": ["min", 0]},
+        {"call": "$set", "args": ["max", 1]},
+        {"call": "seed", "args": [0, 0, 3]},
+        {"call": "scalar", "expect": 1}
+      ]
+    },
+    {
+      "name": "Constraint DIAL via createConstraint — derived reference, default extent",
+      "class": "createConstraint",
+      "args": [3, {"radius": 1}],
+      "tol": "f64",
+      "steps": [
+        {"call": "$get", "args": ["kind"], "expect": 3},
+        {"call": "$get", "args": ["u"], "expect": [0, 1, 0]},
+        {"call": "$get", "args": ["r0"], "expect": [0, 0, 1]},
+        {"call": "$get", "args": ["r1"], "expect": [1, 0, 0]},
+        {"call": "$get", "args": ["pt"], "expect": [0, 0, 1]},
+        {"call": "$get", "args": ["min"], "expect": {"$num": "-Infinity"}},
+        {"call": "$get", "args": ["max"], "expect": {"$num": "Infinity"}},
+        {"call": "$get", "args": ["report"], "expect": 0},
+        {"call": "solve", "args": [0, 5, 1, 0, -1, 0]},
+        {"call": "scalar", "expect": 0},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [0, 0, 1]}
+      ]
+    },
+    {
+      "name": "Constraint — opts parsing: {x,y,z} anchor, non-number radius, report override",
+      "class": "Constraint",
+      "args": [0, {"radius": "x", "anchor": {"x": 1}, "report": 0}],
+      "tol": "f64",
+      "steps": [
+        {"call": "$get", "args": ["radius"], "expect": 1},
+        {"call": "$get", "args": ["anchor"], "expect": [1, 0, 0]},
+        {"call": "$get", "args": ["report"], "expect": 0},
+        {"call": "value", "args": [[0, 0, 0]], "expect": [1, 0, 1]}
+      ]
+    },
+    {
+      "name": "Constraint — opts parsing: zero normal defaults, partial extent, bad report",
+      "class": "Constraint",
+      "args": [1, {"normal": [0, 0, 0], "extent": [1], "report": 7}],
+      "tol": "f64",
+      "steps": [
+        {"call": "$get", "args": ["n"], "expect": [0, 1, 0]},
+        {"call": "$get", "args": ["min"], "expect": 1},
+        {"call": "$get", "args": ["max"], "expect": 1},
+        {"call": "$get", "args": ["report"], "expect": 0}
+      ]
+    }
+  ]
+}

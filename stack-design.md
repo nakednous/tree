@@ -293,7 +293,10 @@ ships them:
 - **What.** For every exported function, a fixture of `{ args, out }` cases; for every
   stateful class (`Track`, `PoseHelm`, `Constraint`), a transcript of `{ call, args, expect }`
   steps run against one instance. Generated from the JavaScript core by a script, committed
-  under `golden/` in this repo, one file per module, plain JSON.
+  under `golden/` in this repo, one file per module, plain JSON. The format's details —
+  a tolerance class per function, `writes` for buffers a call fills beside its return,
+  `$get` / `$set` pseudo-calls in transcripts, the `$num` / `$alias` / `$hook` encodings — are
+  specified in `tools/golden.js`, the one place a port reads them from.
 - **Tolerance.** Exact for integers and enumerations; `1e-6` relative for `f64` state
   (`vec3`, `quat`, keyframes); `1e-5` for `f32` matrices. Degeneracies (`null` returns,
   `Infinity` from a parallel ray) are cases, not omissions.
@@ -515,13 +518,19 @@ and each package doc precedes its code.
 
 1. **`tree` additions** — `camera.js`, `gizmo.js`, the handle proxies, the `query.js`
    endpoints, `golden/`. Renderer-free, so testable headless against the fixtures. Published
-   as `0.0.28`+ from the `0.1.0` branch as they land.
+   as `0.0.28`+ from the `0.1.0` branch as they land — and **consumed by `p5.tree` as each
+   lands** (`unproject`, the id codec, `cameraFromPose` / `cameraFromMat4`, the analytic
+   pick behind a flag beside the rasterized one), so the parity gates of §6.1 close on the
+   current implementation.
 2. **`host`** — in dependency order inside the package: `canvas`, `pointer`, `loop` +
    players, then `handle` + `router`, `helm`, `track`, then `stream`, `media`, `labels`,
-   `orbit`. Validated with a raw-twgl harness (no bridge yet) so host is proven independent
-   of any renderer before the bridge exists.
-3. **`twgl.tree`** — `camera`, `draw`, `target`, `pass`, then `gizmo`, `programs`, then
-   `pick`, `texture`. Validated by re-rendering the imaging heroes first (§4.2).
+   `orbit`. **Validated by incremental adoption in `p5.tree`** (§5.2): each host module
+   replaces its `p5.tree` counterpart the session it lands, and the JSDoc examples and
+   experiments are the test. `p5.tree` is a validated consumer; `twgl.tree` later proves
+   the host renderer-independent.
+3. **`twgl.tree`** — `camera`, `draw`, `target`, `pass`, then `gizmo`, then `pick`,
+   `texture`. Validated by re-rendering the imaging heroes first (§4.2), with `p5.tree`'s
+   gizmos and picking beside it for parity.
 4. **Notebook migration** in the §4.2 order; the notation freeze (§2.3) once the imaging
    heroes and one apps part read as the pseudo-host with only the overlay cut.
 5. **`webgpu.tree`** when WebGPU ships by default on Linux stable — the notebook's own gate
@@ -566,10 +575,11 @@ attaches to any canvas element.
 namespace. The docs pipeline is untouched: the examples are p5 sketches and live in
 `p5.tree`'s JSDoc on the inheriting wrapper, so the generator keeps parsing `p5.tree/src`.
 
-**Timing.** On the current `0.1.0` branch (pending decision #3, "for now"), after `host` has
-been validated by `twgl.tree` (§5.1 step 3) — the adoption is a branch-internal refactor
-behind an unchanged sketch surface, so the docs pipeline is unaffected. Until then
-`p5.tree` consumes only the core additions, in small independent commits.
+**Timing.** On the current `0.1.0` branch (pending decision #3), **incrementally**: the core
+additions as they land in `tree`, then each host module the session it lands — pointer
+source and players first (the current controller reading from them), then the controller
+and router, then the factories. Every step keeps the sketch surface and every JSDoc example
+running; the docs pipeline is the test, so it is unaffected by construction.
 
 **Behavioural deltas to verify in Chromium at adoption.** The analytic sphere at constant
 pixels against the rasterized proxy; the `DIAL` ring as a capsule chain against the torus;
@@ -680,6 +690,10 @@ keeping separate lists, so this is the one place to look.
 | 13 | The handle gizmo's name | bridge §10 | `handleLocus(gl, h, opts)` — a free gizmo taking the producer, like `trackPath(track)` | `handleRig` · `handleMarks` · a `draw` method on the host handle that takes the bridge | **`handleLocus`**, provisional until implementation shows how it reads |
 | 14 | Texture orientation | bridge §9 | one orientation, GL's: images flipped at upload, targets untouched, no flip switch anywhere else | keep a per-call `flip` / `uvs` override as p5.tree's `pane` has | **as written**; `pane`'s `uvs` stays as a UV-mapping option (cropping, tiling), never as an orientation lever |
 | 15 | Hit-test naming | handle §10.2 | `rayHitSphere` · `rayHitCapsule` · `rayHitRing` — `Hit` marks a test (no `out`, `Infinity` on miss) beside the H2 solve primitives that always write a point | give `raySphere` an `Infinity`-on-miss mode instead of a second family | **the family** — solves always write, tests never do |
+| 16 | Golden tolerance semantics | §2.4 | `1e-6` / `1e-5` relative, classed by the output's shape | absolute; class by shape only | **pending** — implemented as the hybrid `\|a − b\| ≤ tol · max(1, \|a\|, \|b\|)`: relative above 1, absolute below, so an entry that is exactly 0 in one engine and 1e-17 in another needs no second rule; and classed by **provenance**: `f32` whenever a matrix is an input or an output (all of `query.js` — a vec3 read through an `f32` matrix carries `f32` error), `f64` for state computed without one |
+| 17 | Lookat with `up ∥ view direction` | quat.js, form.js (surfaced by the quat and form fixtures) | — | leave the degenerate frame to the caller (gl-matrix, glam) | **re-seed** — `qFromLookDir`, `mat4View` and `mat4Eye` replace the up hint with the world axis least aligned with the view direction, the seed `qFromUnitVectors` already uses: one rule for the three lookat constructors, always a proper rotation, deterministic roll at the pole, `qFromLookDir(center − eye, up)` and `mat4Eye` agreeing bit-for-bit |
+| 18 | `CameraTrack.eval` across a perspective ↔ ortho segment | track.js (surfaced by the track fixture) | JSDoc and README: a segment whose keyframes disagree on `fov` / `halfHeight` passes `null` through, so the bridge leaves the projection unchanged | the code: the non-null value of either keyframe passes through, so both `fov` and `halfHeight` can be set at once and the bridge must pick | **pending** — the fixture pins the code; note the doc's reading never applies the ortho at the track's last keyframe (the final cursor still sits on the mixed segment), so a third option is a step at the segment's end |
+| 19 | The helm's `WORLD` frame | helm.js (surfaced by the helm fixture) | the README's "world axes"; `poseDelta`'s claim that an identity profile retraces a pose | the code: the null basis is the identity *eye* matrix, so the `Tz` / `Rr` lanes drive −Z and a world-axis rate retraces only with those two signs flipped | **pending** — the fixture pins the code (a raw profile sends `lin.z = 3` to `pos.z = −3`; the retrace holds with `Tz` / `Rr` signs of −1) and the README / JSDoc now say so; the alternative is `WORLD` meaning world axes (`fZ = +1` for a null basis), which changes `step`'s documented null ≡ identity-eye-matrix contract and every `WORLD` helm in p5.tree |
 
-All fifteen rows are ruled (September 2026); the table stays as the record. New rows are
-added here as implementation surfaces them.
+Nineteen rows; sixteen ruled (September 2026), #16, #18 and #19 pending; the table stays as
+the record. New rows are added here as implementation surfaces them.

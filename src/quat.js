@@ -162,6 +162,10 @@ export const qFromAxisAngle = (out, ax, ay, az, angle) => {
 
 /**
  * Build a quaternion from a look direction (−Z forward) and optional up (default +Y).
+ * `dir` need not be unit. Right = dir × up, up re-orthogonalised as right × dir;
+ * when `dir` is parallel to `up` the up hint is re-seeded from the world axis
+ * least aligned with `dir` (the same seed qFromUnitVectors uses), so every
+ * direction yields a proper rotation.
  * @param {number[]} out
  * @param {number[]} dir  Forward direction [x,y,z].
  * @param {number[]} [up] Up vector [x,y,z].
@@ -172,11 +176,18 @@ export const qFromLookDir = (out, dir, up) => {
   const fl=Math.sqrt(fx*fx+fy*fy+fz*fz)||1;
   fx/=fl; fy/=fl; fz/=fl;
   let ux=up?up[0]:0, uy=up?up[1]:1, uz=up?up[2]:0;
-  let rx=uy*fz-uz*fy, ry=uz*fx-ux*fz, rz=ux*fy-uy*fx;
-  const rl=Math.sqrt(rx*rx+ry*ry+rz*rz)||1;
+  let rx=fy*uz-fz*uy, ry=fz*ux-fx*uz, rz=fx*uy-fy*ux;          // right = dir × up
+  let rl=Math.sqrt(rx*rx+ry*ry+rz*rz);
+  if (rl < 1e-8) {                                              // dir ∥ up: re-seed up
+    const ax=Math.abs(fx), ay=Math.abs(fy), az=Math.abs(fz);
+    ux=0; uy=0; uz=0;
+    if (ax <= ay && ax <= az) ux=1; else if (ay <= az) uy=1; else uz=1;
+    rx=fy*uz-fz*uy; ry=fz*ux-fx*uz; rz=fx*uy-fy*ux;
+    rl=Math.sqrt(rx*rx+ry*ry+rz*rz)||1;
+  }
   rx/=rl; ry/=rl; rz/=rl;
-  ux=fy*rz-fz*ry; uy=fz*rx-fx*rz; uz=fx*ry-fy*rx;
-  return qFromRotMat3x3(out, rx,ry,rz, ux,uy,uz, -fx,-fy,-fz);
+  ux=ry*fz-rz*fy; uy=rz*fx-rx*fz; uz=rx*fy-ry*fx;              // up = right × dir
+  return qFromRotMat3x3(out, rx,ux,-fx, ry,uy,-fy, rz,uz,-fz);   // columns: right, up, back
 };
 
 /**

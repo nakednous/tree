@@ -345,9 +345,12 @@ export class PoseHelm {
  * naive difference takes the long way round — the angular rate spikes at the
  * crossing. Flipping cur into prev's hemisphere first keeps r the shortest arc.
  *
- * Fed through a helm with an identity profile in WORLD, the integrated pose
- * retraces the source (the round-trip e9 asserts). A 1:1, non-integrated
- * consumer skips the helm and applyPoses the absolute pose directly.
+ * Fed through a helm in WORLD whose profile has unit `sens`, in-order lanes and
+ * `Tz` / `Rr` signs of −1 — the helm's lanes are eye-frame and the null basis
+ * is the identity eye matrix (forward −Z), so the two Z channels flip against
+ * world axes — the integrated pose retraces the source (the round-trip e9
+ * asserts). A 1:1, non-integrated consumer skips the helm and applyPoses the
+ * absolute pose directly.
  *
  * @param {{ lin:number[], ang:number[] }} [out]  Destination; omit for a fresh one.
  * @param {{ pos:ArrayLike<number>, rot:ArrayLike<number> }} prev  Previous pose.

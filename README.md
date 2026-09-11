@@ -105,7 +105,7 @@ track.add({ pos:[300,0,0] })                                    // auto tangents
 ```js
 rot: [x,y,z,w]                           // raw quaternion
 rot: { axis:[x,y,z], angle }             // axis-angle
-rot: { dir:[x,y,z], up?:[x,y,z] }        // look direction (−Z forward)
+rot: { dir:[x,y,z], up?:[x,y,z] }        // look direction (−Z forward); up re-seeded when ∥ dir
 rot: { euler:[rx,ry,rz], order?:'YXZ' }  // intrinsic Euler angles (radians)
                                          // orders: YXZ (default), XYZ, ZYX,
                                          //         ZXY, XZY, YZX
@@ -340,7 +340,7 @@ helm.profile = {
 **Frame — `from`.** `helm.from` names the space fed rates are interpreted in — a declaration the host reads to resolve the per-step `basis` (the core stays camera-agnostic):
 
 ```
-WORLD    world axes — the identity basis (step's basis is null)
+WORLD    the world-aligned eye frame — the identity basis (forward −Z; step's basis is null)
 EYE      a viewing camera's frame — screen-relative (default)
 SELF     the helm's OWN evolving pose — body-relative
 <mat4>   an explicit fixed frame
@@ -524,8 +524,8 @@ mat4PV  mat4MV
 **Matrix construction from specs** (`form.js`):
 ```
 mat4FromBasis        — rigid frame from orthonormal basis + translation
-mat4View             — view matrix (world→eye) from lookat params
-mat4Eye              — eye matrix (eye→world) from lookat params
+mat4View             — view matrix (world→eye) from lookat params (up re-seeded when ∥ view direction)
+mat4Eye              — eye matrix (eye→world) from lookat params  (same rule)
 mat4FromTRS          — column-major mat4 from flat TRS scalars
 mat4FromTranslation  — translation-only mat4
 mat4FromScale        — scale-only mat4
@@ -601,6 +601,19 @@ mat4Invert(mat4PVInv, mat4PV)
 mapLocation(out, px, py, pz, WORLD, SCREEN,
   { mat4Proj: proj, mat4View: view, mat4PV, mat4PVInv }, vp, WEBGL)
 ```
+
+---
+
+## Golden vectors
+
+`golden/` holds one JSON fixture per source module — `{ args, out }` cases for every exported function and `{ call, args, expect }` transcripts for the stateful classes — generated from this core and committed with the repo (not shipped in the package). They are both the regression suite and the port contract: a port is conformant when it reproduces them within the stated tolerances (exact for ints and enums, `1e-6` for `f64` state, `1e-5` for `f32` matrices).
+
+```bash
+npm run golden   # regenerate every fixture from src/
+npm test         # assert src/ against golden/, and that every export has a fixture
+```
+
+The fixture format is specified in `tools/golden.js`. A function without a fixture is not exported.
 
 ---
 

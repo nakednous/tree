@@ -186,8 +186,8 @@ export function projRight (p, ndcZMin) { return p[15]===1 ?  (1-p[12])/p[0]  : p
  */
 export function projTop(p, ndcZMin) {
   return p[15]===1
-    ? ( Math.sign(p[5]) - p[13]) / p[5]   // ortho
-    : projNear(p,ndcZMin)*(1+p[9])/p[5];  // perspective (p[5]>0 in practice)
+    ? ( Math.sign(p[5]) - p[13]) / p[5]                    // ortho
+    : projNear(p,ndcZMin)*(Math.sign(p[5])+p[9])/p[5];     // perspective
 }
 
 /**
@@ -195,8 +195,8 @@ export function projTop(p, ndcZMin) {
  */
 export function projBottom(p, ndcZMin) {
   return p[15]===1
-    ? (-Math.sign(p[5]) - p[13]) / p[5]   // ortho
-    : projNear(p,ndcZMin)*(p[9]-1)/p[5];  // perspective
+    ? (-Math.sign(p[5]) - p[13]) / p[5]                    // ortho
+    : projNear(p,ndcZMin)*(p[9]-Math.sign(p[5]))/p[5];     // perspective
 }
 
 /** Vertical field of view in radians (perspective only). */
@@ -462,9 +462,13 @@ function _worldToScreenDir(out, dx, dy, dz, proj, view, vpW, vpH, ndcZMin) {
 }
 
 function _screenToWorldDir(out, dx, dy, dz, proj, eye, vpW, vpH, ndcZMin) {
-  // Inverse of _worldToScreenDir; signed vpW/vpH cancel the y-flip.
-  _applyDir(out, eye, dx/(vpW*0.5)/proj[0], dy/(vpH*0.5)/proj[5], dz/((1-ndcZMin)*0.5));
-  return out;
+  // Inverse of _worldToScreenDir: undo the viewport scale, then the projection's
+  // upper-triangular 3×3 block (p[8], p[9] carry an off-centre frustum), then
+  // rotate eye→world. Signed vpW/vpH cancel the y-flip.
+  const cz = dz/((1-ndcZMin)*0.5)/proj[10];
+  const cy = (dy/(vpH*0.5) - proj[9]*cz)/proj[5];
+  const cx = (dx/(vpW*0.5) - proj[8]*cz)/proj[0];
+  return _applyDir(out, eye, cx, cy, cz);
 }
 
 function _screenToNDCDir(out, dx, dy, dz, vpW, vpH, ndcZMin) {

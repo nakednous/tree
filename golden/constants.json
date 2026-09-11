@@ -1,0 +1,31 @@
+{
+  "module": "constants",
+  "tolerance": {"exact": 0, "f64": 0.000001, "f32": 0.00001},
+  "constants": {
+    "WORLD": "WORLD",
+    "EYE": "EYE",
+    "NDC": "NDC",
+    "SCREEN": "SCREEN",
+    "MODEL": "MODEL",
+    "MATRIX": "MATRIX",
+    "SELF": "SELF",
+    "WEBGL": -1,
+    "WEBGPU": 0,
+    "INVISIBLE": 0,
+    "VISIBLE": 1,
+    "SEMIVISIBLE": 2,
+    "ORIGIN": [0, 0, 0],
+    "i": [1, 0, 0],
+    "j": [0, 1, 0],
+    "k": [0, 0, 1],
+    "_i": [-1, 0, 0],
+    "_j": [0, -1, 0],
+    "_k": [0, 0, -1],
+    "SPHERE": 0,
+    "PLANE": 1,
+    "AXIS": 2,
+    "DIAL": 3,
+    "POINT": 0,
+    "DIRECTION": 1
+  }
+}

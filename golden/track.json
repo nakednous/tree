@@ -1,0 +1,1011 @@
+{
+  "module": "track",
+  "tolerance": {"exact": 0, "f64": 0.000001, "f32": 0.00001},
+  "functions": {
+    "hermiteVec3": {
+      "tol": "f64",
+      "cases": [
+        {"args": [[0, 0, 0], [0, 0, 0], [1, 0, 0], [1, 1, 0], [1, 0, 0], 0], "out": [0, 0, 0]},
+        {"args": [[0, 0, 0], [0, 0, 0], [1, 0, 0], [1, 1, 0], [1, 0, 0], 1], "out": [1, 1, 0]},
+        {"args": [[0, 0, 0], [0, 0, 0], [1, 0, 0], [1, 1, 0], [1, 0, 0], 0.5], "out": [0.5, 0.5, 0]},
+        {"args": [[0, 0, 0], [0, 0, 0], [0, 0, 0], [2, 4, 6], [0, 0, 0], 0.5], "out": [1, 2, 3]},
+        {
+          "args": [[0, 0, 0], [1, 2, 3], [0, 5, 0], [4, 0, -2], [-3, 0, 0], 0.25],
+          "out": [1.609375, 2.390625, 2.21875]
+        }
+      ]
+    },
+    "lerpVec3": {
+      "tol": "f64",
+      "cases": [
+        {"args": [[0, 0, 0], [1, 2, 3], [4, 0, -2], 0], "out": [1, 2, 3]},
+        {"args": [[0, 0, 0], [1, 2, 3], [4, 0, -2], 0.5], "out": [2.5, 1, 0.5]},
+        {"args": [[0, 0, 0], [1, 2, 3], [4, 0, -2], 1], "out": [4, 0, -2]},
+        {"args": [[0, 0, 0], [1, 2, 3], [4, 0, -2], 1.5], "out": [5.5, -1, -4.5]}
+      ]
+    },
+    "transformToMat4": {
+      "tol": "f32",
+      "cases": [
+        {
+          "args": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]}],
+          "out": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+        },
+        {
+          "args": [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            {
+              "pos": [1, 2, 3],
+              "rot": [0.18257418583505536, 0.3651483716701107, 0.5477225575051661, 0.7302967433402214],
+              "scl": [2, 3, 4]
+            }
+          ],
+          "out": [0.26666666666666705, 1.8666666666666665, -0.6666666666666665, 0, -2, 1.0000000000000004, 1.9999999999999996, 0, 2.9333333333333327, 0.5333333333333334, 2.666666666666667, 0, 1, 2, 3, 1]
+        },
+        {
+          "args": [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            {"pos": [0, 0, 0], "rot": [0, 0, 0.7071067811865475, 0.7071067811865476], "scl": [1, -1, 1]}
+          ],
+          "out": [2.220446049250313e-16, 1, 0, 0, 1, -2.220446049250313e-16, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+        }
+      ]
+    },
+    "mat4ToTransform": {
+      "tol": "f32",
+      "cases": [
+        {
+          "args": [{"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]}, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]],
+          "out": {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]}
+        },
+        {
+          "args": [
+            {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]},
+            [0.26666666666666705, 1.8666666666666665, -0.6666666666666665, 0, -2, 1.0000000000000004, 1.9999999999999996, 0, 2.9333333333333327, 0.5333333333333334, 2.666666666666667, 0, 1, 2, 3, 1]
+          ],
+          "out": {
+            "pos": [1, 2, 3],
+            "rot": [0.18257418583505527, 0.36514837167011066, 0.5477225575051661, 0.7302967433402215],
+            "scl": [1.9999999999999998, 3, 3.9999999999999996]
+          }
+        },
+        {
+          "args": [
+            {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]},
+            [1, 0, 0, 0, 0, -1, 1.2246467991473532e-16, 0, 0, -1.2246467991473532e-16, -1, 0, 0, 0, 0, 1]
+          ],
+          "out": {"pos": [0, 0, 0], "rot": [1, 0, 0, 6.123233995736766e-17], "scl": [1, 1, 1]}
+        },
+        {
+          "args": [{"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]}, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 5, 6, 7, 1]],
+          "out": {"pos": [5, 6, 7], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]}
+        }
+      ]
+    }
+  },
+  "transcripts": [
+    {
+      "name": "PoseTrack — spec parser: every rot form, vec forms, mat4Model, rejects",
+      "class": "PoseTrack",
+      "tol": "f64",
+      "steps": [
+        {"call": "add", "args": [{"pos": [0, 0, 0]}]},
+        {"call": "add", "args": [{"pos": [1, 0, 0], "rot": [0, 0, 0, 2]}]},
+        {
+          "call": "add",
+          "args": [
+            {
+              "pos": [2, 0, 0],
+              "rot": {"axis": [0, 2, 0], "angle": 1.5707963267948966},
+              "scl": [2, 2, 2],
+              "tanOut": [0, 5, 0]
+            }
+          ]
+        },
+        {"call": "add", "args": [{"pos": {"x": 3, "y": 0, "z": 0}, "rot": {"dir": [1, 0, 0]}}]},
+        {"call": "add", "args": [{"pos": [4, 0, 0], "rot": {"dir": [0, 0, -1], "up": [1, 0, 0]}}]},
+        {"call": "add", "args": [{"pos": [5, 0, 0], "rot": {"euler": [1.5707963267948966, 0, 0]}}]},
+        {"call": "add", "args": [{"pos": [6, 0, 0], "rot": {"euler": [0.1, 0.2, 0.3], "order": "ZYX"}}]},
+        {"call": "add", "args": [{"pos": [7, 0, 0], "rot": {"euler": [0.1, 0.2, 0.3], "order": "BAD"}}]},
+        {"call": "add", "args": [{"pos": [8, 0, 0], "rot": {"from": [1, 0, 0], "to": [0, 1, 0]}}]},
+        {"call": "add", "args": [{"pos": [9, 0, 0], "rot": {"from": [1, 0, 0], "to": [-1, 0, 0]}}]},
+        {"call": "add", "args": [{"pos": [10, 0, 0], "rot": {"from": [0, 0, 1], "to": [0, 0, 2]}}]},
+        {"call": "add", "args": [{"pos": [11, 0, 0], "rot": {"mat3": [0, 1, 0, -1, 0, 0, 0, 0, 1]}}]},
+        {
+          "call": "add",
+          "args": [
+            {
+              "pos": [12, 0, 0],
+              "rot": {
+                "mat4Eye": [0.13333333333333353, 0.9333333333333332, -0.33333333333333326, 0, -0.6666666666666666, 0.3333333333333335, 0.6666666666666665, 0, 0.7333333333333332, 0.13333333333333336, 0.6666666666666667, 0, 0, 0, 0, 1]
+              }
+            }
+          ]
+        },
+        {
+          "call": "add",
+          "args": [
+            {
+              "pos": [13, 0, 0],
+              "rot": {
+                "mat4Eye": {
+                  "mat4": [0.13333333333333353, 0.9333333333333332, -0.33333333333333326, 0, -0.6666666666666666, 0.3333333333333335, 0.6666666666666665, 0, 0.7333333333333332, 0.13333333333333336, 0.6666666666666667, 0, 0, 0, 0, 1]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "call": "add",
+          "args": [
+            {
+              "mat4Model": [0.26666666666666705, 1.8666666666666665, -0.6666666666666665, 0, -2, 1.0000000000000004, 1.9999999999999996, 0, 2.9333333333333327, 0.5333333333333334, 2.666666666666667, 0, 1, 2, 3, 1]
+            }
+          ]
+        },
+        {
+          "call": "add",
+          "args": [
+            {
+              "mat4Model": {
+                "mat4": [0.26666666666666705, 1.8666666666666665, -0.6666666666666665, 0, -2, 1.0000000000000004, 1.9999999999999996, 0, 2.9333333333333327, 0.5333333333333334, 2.666666666666667, 0, 1, 2, 3, 1]
+              },
+              "pos": [99, 99, 99]
+            }
+          ]
+        },
+        {"call": "add", "args": [{"mat4Model": [1, 2, 3]}]},
+        {"call": "add", "args": [{"pos": [14, 0, 0], "rot": {"mat3": [1, 2]}}]},
+        {"call": "add", "args": [null]},
+        {"call": "add", "args": ["spec"]},
+        {"call": "add", "args": []},
+        {"call": "add", "args": [[{"pos": [15, 0, 0]}, {"pos": [16, 0, 0], "tanIn": [1, 1, 1]}]]},
+        {
+          "call": "$get",
+          "args": ["keyframes"],
+          "expect": [
+            {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {"pos": [1, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {
+              "pos": [2, 0, 0],
+              "rot": [0, 0.7071067811865475, 0, 0.7071067811865476],
+              "scl": [2, 2, 2],
+              "tanIn": null,
+              "tanOut": [0, 5, 0]
+            },
+            {
+              "pos": [3, 0, 0],
+              "rot": [0, -0.7071067811865475, 0, 0.7071067811865476],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [4, 0, 0],
+              "rot": [0, 0, -0.7071067811865475, 0.7071067811865476],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [5, 0, 0],
+              "rot": [0, 0.7071067811865475, 0, 0.7071067811865476],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [6, 0, 0],
+              "rot": [0.1435721750273919, 0.10602051106179562, 0.03427079855048209, 0.9833474432563557],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [7, 0, 0],
+              "rot": [0.10602051106179562, 0.03427079855048209, 0.1435721750273919, 0.9833474432563557],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [8, 0, 0],
+              "rot": [0, 0, 0.7071067811865475, 0.7071067811865476],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {"pos": [9, 0, 0], "rot": [0, -1, 0, 6.123233995736766e-17], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {"pos": [10, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {
+              "pos": [11, 0, 0],
+              "rot": [0, 0, 0.7071067811865475, 0.7071067811865476],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [12, 0, 0],
+              "rot": [0.18257418583505533, 0.36514837167011066, 0.5477225575051661, 0.7302967433402217],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [13, 0, 0],
+              "rot": [0.18257418583505533, 0.36514837167011066, 0.5477225575051661, 0.7302967433402217],
+              "scl": [1, 1, 1],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {
+              "pos": [1, 2, 3],
+              "rot": [0.18257418583505527, 0.36514837167011066, 0.5477225575051661, 0.7302967433402215],
+              "scl": [1.9999999999999998, 3, 3.9999999999999996],
+              "tanIn": null,
+              "tanOut": null
+            },
+            {"pos": [14, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {"pos": [15, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {"pos": [16, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": [1, 1, 1], "tanOut": null}
+          ]
+        },
+        {"call": "$get", "args": ["segments"], "expect": 17}
+      ]
+    },
+    {
+      "name": "PoseTrack — edits: dedup, set, remove, reset",
+      "class": "PoseTrack",
+      "tol": "f64",
+      "steps": [
+        {"call": "add", "args": [{"pos": [0, 0, 0]}]},
+        {"call": "add", "args": [{"pos": [0, 0, 0]}]},
+        {"call": "add", "args": [{"pos": [0, 0, 0]}, {"deduplicate": false}]},
+        {"call": "add", "args": [{"pos": [1, 0, 0]}]},
+        {"call": "add", "args": [{"pos": [0, 0, 0]}]},
+        {"call": "$get", "args": ["segments"], "expect": 3},
+        {"call": "$set", "args": ["seg", 3]},
+        {"call": "$set", "args": ["f", 10]},
+        {"call": "set", "args": [0, {"pos": [9, 9, 9]}], "expect": true},
+        {"call": "set", "args": [4, {"pos": [4, 4, 4]}], "expect": true},
+        {"call": "set", "args": [99, {"pos": [1, 1, 1]}], "expect": false},
+        {"call": "set", "args": [-1, {"pos": [1, 1, 1]}], "expect": false},
+        {"call": "set", "args": [0, null], "expect": false},
+        {"call": "set", "args": ["0", {"pos": [1, 1, 1]}], "expect": false},
+        {"call": "remove", "args": [1], "expect": true},
+        {"call": "remove", "args": [99], "expect": false},
+        {"call": "remove", "args": [-1], "expect": false},
+        {"call": "remove", "args": ["1"], "expect": false},
+        {
+          "call": "$get",
+          "args": ["keyframes"],
+          "expect": [
+            {"pos": [9, 9, 9], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {"pos": [1, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null},
+            {"pos": [4, 4, 4], "rot": [0, 0, 0, 1], "scl": [1, 1, 1], "tanIn": null, "tanOut": null}
+          ]
+        },
+        {"call": "$get", "args": ["seg"], "expect": 2},
+        {"call": "$get", "args": ["f"], "expect": 10},
+        {"call": "remove", "args": [0], "expect": true},
+        {"call": "remove", "args": [0], "expect": true},
+        {"call": "remove", "args": [0], "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 0},
+        {"call": "$get", "args": ["f"], "expect": 0},
+        {"call": "add", "args": [{"pos": [1, 0, 0]}]},
+        {"call": "reset"},
+        {"call": "$get", "args": ["keyframes"], "expect": []},
+        {
+          "call": "info",
+          "expect": {
+            "keyframes": 0,
+            "segments": 0,
+            "seg": 0,
+            "f": 0,
+            "playing": false,
+            "loop": false,
+            "bounce": false,
+            "rate": 1,
+            "duration": 30,
+            "time": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "PoseTrack — transport: play/tick/eval/seek/time/info, once mode, hook order",
+      "class": "PoseTrack",
+      "tol": "f64",
+      "steps": [
+        {"call": "$set", "args": ["onPlay", {"$hook": "onPlay"}]},
+        {"call": "$set", "args": ["onEnd", {"$hook": "onEnd"}]},
+        {"call": "$set", "args": ["onStop", {"$hook": "onStop"}]},
+        {"call": "$set", "args": ["_onPlay", {"$hook": "_onPlay"}]},
+        {"call": "$set", "args": ["_onEnd", {"$hook": "_onEnd"}]},
+        {"call": "$set", "args": ["_onStop", {"$hook": "_onStop"}]},
+        {"call": "$set", "args": ["_onActivate", {"$hook": "_onActivate"}]},
+        {"call": "$set", "args": ["_onDeactivate", {"$hook": "_onDeactivate"}]},
+        {"call": "play"},
+        {"call": "add", "args": [{"pos": [0, 0, 0]}]},
+        {"call": "play"},
+        {"call": "$get", "args": ["playing"], "expect": false},
+        {"call": "$get", "args": ["$hooks"], "expect": []},
+        {"call": "eval", "expect": {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]}},
+        {
+          "call": "add",
+          "args": [
+            [
+              {"pos": [10, 0, 0], "rot": [0, 0, 0.7071067811865475, 0.7071067811865476]},
+              {"pos": [10, 10, 0], "scl": [2, 2, 2]}
+            ]
+          ]
+        },
+        {"call": "eval", "expect": {"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "scl": [1, 1, 1]}},
+        {"call": "play", "args": [{"duration": 4, "rate": 1}]},
+        {"call": "$get", "args": ["$hooks"], "expect": ["onPlay", "_onPlay", "_onActivate"]},
+        {
+          "call": "info",
+          "expect": {
+            "keyframes": 3,
+            "segments": 2,
+            "seg": 0,
+            "f": 0,
+            "playing": true,
+            "loop": false,
+            "bounce": false,
+            "rate": 1,
+            "duration": 4,
+            "time": 0
+          }
+        },
+        {"call": "play"},
+        {"call": "$get", "args": ["$hooks"], "expect": []},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 0},
+        {"call": "$get", "args": ["f"], "expect": 3},
+        {"call": "time", "expect": 0.375},
+        {
+          "call": "eval",
+          "expect": {
+            "pos": [7.84699362813377, -0.703125, 0],
+            "rot": [0, 0, 0.5555702330196022, 0.8314696123025453],
+            "scl": [1, 1, 1]
+          }
+        },
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 3},
+        {"call": "tick", "expect": false},
+        {"call": "$get", "args": ["$hooks"], "expect": ["onEnd", "_onEnd", "_onDeactivate"]},
+        {"call": "$get", "args": ["playing"], "expect": false},
+        {"call": "time", "expect": 1},
+        {"call": "eval", "expect": {"pos": [10, 10, 0], "rot": [0, 0, 0, 1], "scl": [2, 2, 2]}},
+        {"call": "tick", "expect": false},
+        {"call": "seek", "args": [0.5]},
+        {"call": "time", "expect": 0.5},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 0},
+        {"call": "seek", "args": [0.25, 1]},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 1},
+        {"call": "seek", "args": [-1]},
+        {"call": "time", "expect": 0},
+        {"call": "seek", "args": [7, 99]},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 4},
+        {"call": "play", "args": [-1]},
+        {"call": "$get", "args": ["rate"], "expect": -1},
+        {"call": "$get", "args": ["$hooks"], "expect": ["onPlay", "_onPlay", "_onActivate"]},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 3},
+        {"call": "$set", "args": ["rate", "x"]},
+        {"call": "$get", "args": ["rate"], "expect": 1},
+        {"call": "$set", "args": ["rate", 0]},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["f"], "expect": 3},
+        {"call": "stop"},
+        {"call": "$get", "args": ["$hooks"], "expect": ["onStop", "_onStop", "_onDeactivate"]},
+        {"call": "$get", "args": ["playing"], "expect": false},
+        {"call": "stop"},
+        {"call": "$get", "args": ["$hooks"], "expect": []},
+        {"call": "play", "args": [{"rate": -1}]},
+        {"call": "stop", "args": [true]},
+        {"call": "time", "expect": 1},
+        {"call": "play", "args": [{"rate": 1}]},
+        {"call": "stop", "args": [true]},
+        {"call": "time", "expect": 0},
+        {"call": "play"},
+        {"call": "reset"},
+        {
+          "call": "$get",
+          "args": ["$hooks"],
+          "expect": [
+            "onPlay",
+            "_onPlay",
+            "_onActivate",
+            "onStop",
+            "_onStop",
+            "_onDeactivate",
+            "onPlay",
+            "_onPlay",
+            "_onActivate",
+            "onStop",
+            "_onStop",
+            "_onDeactivate",
+            "onPlay",
+            "_onPlay",
+            "_onActivate",
+            "onStop",
+            "_onStop",
+            "_onDeactivate"
+          ]
+        },
+        {
+          "call": "info",
+          "expect": {
+            "keyframes": 0,
+            "segments": 0,
+            "seg": 0,
+            "f": 0,
+            "playing": false,
+            "loop": false,
+            "bounce": false,
+            "rate": 1,
+            "duration": 4,
+            "time": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "PoseTrack — loop and bounce modes",
+      "class": "PoseTrack",
+      "tol": "f64",
+      "steps": [
+        {"call": "$set", "args": ["onPlay", {"$hook": "onPlay"}]},
+        {"call": "$set", "args": ["onEnd", {"$hook": "onEnd"}]},
+        {"call": "$set", "args": ["onStop", {"$hook": "onStop"}]},
+        {"call": "$set", "args": ["_onPlay", {"$hook": "_onPlay"}]},
+        {"call": "$set", "args": ["_onEnd", {"$hook": "_onEnd"}]},
+        {"call": "$set", "args": ["_onStop", {"$hook": "_onStop"}]},
+        {"call": "$set", "args": ["_onActivate", {"$hook": "_onActivate"}]},
+        {"call": "$set", "args": ["_onDeactivate", {"$hook": "_onDeactivate"}]},
+        {"call": "add", "args": [[{"pos": [0, 0, 0]}, {"pos": [3, 0, 0]}, {"pos": [6, 0, 0]}]]},
+        {"call": "play", "args": [{"duration": 3, "loop": true}]},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 2},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 0},
+        {"call": "$get", "args": ["f"], "expect": 0},
+        {"call": "$set", "args": ["rate", -2]},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 1},
+        {"call": "$get", "args": ["$hooks"], "expect": ["onPlay", "_onPlay", "_onActivate"]},
+        {"call": "$get", "args": ["playing"], "expect": true},
+        {"call": "play", "args": [{"bounce": true, "rate": 1}]},
+        {"call": "seek", "args": [1]},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 2},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 0},
+        {"call": "$get", "args": ["f"], "expect": 1},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 0},
+        {"call": "$get", "args": ["f"], "expect": 1},
+        {"call": "$set", "args": ["rate", 15]},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 1},
+        {"call": "stop"},
+        {"call": "play", "args": [{"loop": false, "bounce": true, "rate": 1}]},
+        {"call": "seek", "args": [0]},
+        {
+          "call": "$get",
+          "args": ["$hooks"],
+          "expect": ["onStop", "_onStop", "_onDeactivate", "onPlay", "_onPlay", "_onActivate"]
+        },
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 1},
+        {"call": "$get", "args": ["f"], "expect": 3},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "tick", "expect": true},
+        {"call": "$get", "args": ["seg"], "expect": 0},
+        {"call": "$get", "args": ["f"], "expect": 1},
+        {"call": "tick", "expect": false},
+        {"call": "$get", "args": ["playing"], "expect": false},
+        {"call": "$get", "args": ["$hooks"], "expect": ["onEnd", "_onEnd", "_onDeactivate"]},
+        {"call": "time", "expect": 0}
+      ]
+    },
+    {
+      "name": "PoseTrack — samplers and interpolation modes",
+      "class": "PoseTrack",
+      "tol": "f64",
+      "steps": [
+        {"call": "samplePos", "args": [[0, 0, 0], 0, 0.5], "expect": [0, 0, 0]},
+        {"call": "tangents", "args": [[0, 0, 0], [0, 0, 0], 0], "writes": {"0": [0, 0, 0], "1": [0, 0, 0]}},
+        {
+          "call": "add",
+          "args": [
+            [
+              {"pos": [0, 0, 0], "rot": [0, 0, 0, 1]},
+              {"pos": [10, 0, 0], "rot": [0, 0, 0.7071067811865475, 0.7071067811865476], "tanOut": [0, 20, 0]},
+              {"pos": [10, 10, 0], "rot": [0, 0.7071067811865475, 0, 0.7071067811865476], "scl": [2, 2, 2]},
+              {"pos": [0, 10, 0], "rot": [0, 0, -0.7071067811865475, -0.7071067811865476], "scl": [1, 3, 1]}
+            ]
+          ]
+        },
+        {"call": "samplePos", "args": [[0, 0, 0], 0, 0], "expect": [0, 0, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 0, 0.5], "expect": [5.300316341690053, -2.5, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 0, 1], "expect": [10, 0, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 1, 0.5], "expect": [10.625, 6.875, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 2, 0.5], "expect": [4.675316341690053, 10.625, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 3, 0], "expect": [0, 10, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], -1, 0.5], "expect": [0, 0, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 0, 1.5], "expect": [10, 0, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 1.9, 0.5], "expect": [10.625, 6.875, 0]},
+        {
+          "call": "tangents",
+          "args": [[0, 0, 0], [0, 0, 0], 0],
+          "writes": {"0": [2.4025307335204227, 0, 0], "1": [2.4025307335204227, 0, 0]}
+        },
+        {"call": "tangents", "args": [[0, 0, 0], [0, 0, 0], 1], "writes": {"0": [0, 20, 0], "1": [0, 20, 0]}},
+        {"call": "tangents", "args": [[0, 0, 0], [0, 0, 0], 2], "writes": {"0": [-5, 5, 0], "1": [-5, 5, 0]}},
+        {
+          "call": "tangents",
+          "args": [[0, 0, 0], [0, 0, 0], 3],
+          "writes": {"0": [-2.4025307335204227, 0, 0], "1": [-2.4025307335204227, 0, 0]}
+        },
+        {
+          "call": "tangents",
+          "args": [[0, 0, 0], [0, 0, 0], 9],
+          "writes": {"0": [-2.4025307335204227, 0, 0], "1": [-2.4025307335204227, 0, 0]}
+        },
+        {
+          "call": "mat4Model",
+          "args": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1, 0.25],
+          "expect": [0.3050211698203656, 1.1383545031536988, -0.41666666666666674, 0, -1.1383545031536988, 0.41666666666666674, 0.30502116982036553, 0, 0.41666666666666674, 0.30502116982036553, 1.1383545031536988, 0, 10.234375, 4.140625, 0, 1],
+          "tol": "f32"
+        },
+        {"call": "seek", "args": [0.4]},
+        {"call": "samplePos", "args": [[0, 0, 0]], "expect": [10.16, 3.440000000000004, 0]},
+        {
+          "call": "mat4Model",
+          "args": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+          "expect": [0.24721359549995822, 1.1308363661140808, -0.3163772293858777, 0, -1.1308363661140808, 0.3163772293858777, 0.24721359549995822, 0, 0.3163772293858777, 0.24721359549995822, 1.1308363661140808, 0, 10.16, 3.440000000000004, 0, 1],
+          "tol": "f32"
+        },
+        {
+          "call": "eval",
+          "expect": {
+            "pos": [10.16, 3.440000000000004, 0],
+            "rot": [0, 0.1697591846876032, 0.6067752091364239, 0.7765343938240272],
+            "scl": [1.2000000000000002, 1.2000000000000002, 1.2000000000000002]
+          }
+        },
+        {"call": "$set", "args": ["rotInterp", "nlerp"]},
+        {
+          "call": "eval",
+          "expect": {
+            "pos": [10.16, 3.440000000000004, 0],
+            "rot": [0, 0.1543033499620921, 0.6172133998483674, 0.7715167498104597],
+            "scl": [1.2000000000000002, 1.2000000000000002, 1.2000000000000002]
+          }
+        },
+        {"call": "$set", "args": ["rotInterp", "step"]},
+        {
+          "call": "eval",
+          "expect": {
+            "pos": [10.16, 3.440000000000004, 0],
+            "rot": [0, 0, 0.7071067811865475, 0.7071067811865476],
+            "scl": [1.2000000000000002, 1.2000000000000002, 1.2000000000000002]
+          }
+        },
+        {"call": "$set", "args": ["posInterp", "linear"]},
+        {"call": "samplePos", "args": [[0, 0, 0], 1, 0.5], "expect": [10, 5, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0]], "expect": [10, 2.000000000000002, 0]},
+        {"call": "$set", "args": ["posInterp", "step"]},
+        {"call": "samplePos", "args": [[0, 0, 0], 1, 0.5], "expect": [10, 0, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 1, 1], "expect": [10, 0, 0]},
+        {"call": "$set", "args": ["posInterp", "hermite"]},
+        {"call": "set", "args": [2, {"pos": [10, 10, 0], "tanIn": [-5, 0, 0], "tanOut": [0, 0, 5]}], "expect": true},
+        {"call": "tangents", "args": [[0, 0, 0], [0, 0, 0], 2], "writes": {"0": [-5, 0, 0], "1": [0, 0, 5]}},
+        {"call": "samplePos", "args": [[0, 0, 0], 1, 0.5], "expect": [10.625, 7.5, 0]},
+        {"call": "samplePos", "args": [[0, 0, 0], 2, 0.5], "expect": [5.300316341690053, 10, 0.625]}
+      ]
+    },
+    {
+      "name": "CameraTrack — spec parser, defaults, edits",
+      "class": "CameraTrack",
+      "tol": "f64",
+      "steps": [
+        {"call": "add", "args": [{"eye": [0, 0, 5]}]},
+        {
+          "call": "add",
+          "args": [
+            {
+              "eye": [3, 4, 5],
+              "center": [0, 1, 0],
+              "up": [0, 2, 0],
+              "fov": 1.0471975511965976,
+              "near": 1,
+              "far": 50,
+              "eyeTanOut": [1, 0, 0],
+              "centerTanIn": {"x": 0, "y": 1, "z": 0}
+            }
+          ]
+        },
+        {
+          "call": "add",
+          "args": [{"eye": [3, 4, 5], "center": [0, 1, 0], "up": [0, 2, 0], "fov": 1.0471975511965976, "near": 1, "far": 50}]
+        },
+        {"call": "add", "args": [{"eye": [0, 0, -5], "halfHeight": 2, "fov": "1"}]},
+        {"call": "add", "args": [{"center": [1, 1, 1]}]},
+        {"call": "add", "args": [{"eye": [1, 2]}]},
+        {"call": "add", "args": [null]},
+        {"call": "add", "args": [[{"eye": [1, 0, 0], "up": [0, 0, 3]}, {"eye": [1, 0, 0], "up": [0, 0, 3]}]]},
+        {
+          "call": "$get",
+          "args": ["keyframes"],
+          "expect": [
+            {
+              "eye": [0, 0, 5],
+              "center": [0, 0, 0],
+              "up": [0, 1, 0],
+              "fov": null,
+              "halfHeight": null,
+              "near": 0.1,
+              "far": 1000,
+              "eyeTanIn": null,
+              "eyeTanOut": null,
+              "centerTanIn": null,
+              "centerTanOut": null
+            },
+            {
+              "eye": [3, 4, 5],
+              "center": [0, 1, 0],
+              "up": [0, 1, 0],
+              "fov": 1.0471975511965976,
+              "halfHeight": null,
+              "near": 1,
+              "far": 50,
+              "eyeTanIn": null,
+              "eyeTanOut": [1, 0, 0],
+              "centerTanIn": [0, 1, 0],
+              "centerTanOut": null
+            },
+            {
+              "eye": [0, 0, -5],
+              "center": [0, 0, 0],
+              "up": [0, 1, 0],
+              "fov": null,
+              "halfHeight": 2,
+              "near": 0.1,
+              "far": 1000,
+              "eyeTanIn": null,
+              "eyeTanOut": null,
+              "centerTanIn": null,
+              "centerTanOut": null
+            },
+            {
+              "eye": [1, 0, 0],
+              "center": [0, 0, 0],
+              "up": [0, 0, 1],
+              "fov": null,
+              "halfHeight": null,
+              "near": 0.1,
+              "far": 1000,
+              "eyeTanIn": null,
+              "eyeTanOut": null,
+              "centerTanIn": null,
+              "centerTanOut": null
+            }
+          ]
+        },
+        {"call": "$get", "args": ["segments"], "expect": 3},
+        {"call": "set", "args": [0, {"eye": [0, 0, 9]}], "expect": true},
+        {"call": "set", "args": [0, {"center": [0, 0, 9]}], "expect": false},
+        {"call": "set", "args": [4, {"eye": [7, 7, 7]}], "expect": true},
+        {"call": "remove", "args": [1], "expect": true},
+        {
+          "call": "$get",
+          "args": ["keyframes"],
+          "expect": [
+            {
+              "eye": [0, 0, 9],
+              "center": [0, 0, 0],
+              "up": [0, 1, 0],
+              "fov": null,
+              "halfHeight": null,
+              "near": 0.1,
+              "far": 1000,
+              "eyeTanIn": null,
+              "eyeTanOut": null,
+              "centerTanIn": null,
+              "centerTanOut": null
+            },
+            {
+              "eye": [0, 0, -5],
+              "center": [0, 0, 0],
+              "up": [0, 1, 0],
+              "fov": null,
+              "halfHeight": 2,
+              "near": 0.1,
+              "far": 1000,
+              "eyeTanIn": null,
+              "eyeTanOut": null,
+              "centerTanIn": null,
+              "centerTanOut": null
+            },
+            {
+              "eye": [1, 0, 0],
+              "center": [0, 0, 0],
+              "up": [0, 0, 1],
+              "fov": null,
+              "halfHeight": null,
+              "near": 0.1,
+              "far": 1000,
+              "eyeTanIn": null,
+              "eyeTanOut": null,
+              "centerTanIn": null,
+              "centerTanOut": null
+            },
+            {
+              "eye": [7, 7, 7],
+              "center": [0, 0, 0],
+              "up": [0, 1, 0],
+              "fov": null,
+              "halfHeight": null,
+              "near": 0.1,
+              "far": 1000,
+              "eyeTanIn": null,
+              "eyeTanOut": null,
+              "centerTanIn": null,
+              "centerTanOut": null
+            }
+          ]
+        },
+        {
+          "call": "info",
+          "expect": {
+            "keyframes": 4,
+            "segments": 3,
+            "seg": 0,
+            "f": 0,
+            "playing": false,
+            "loop": false,
+            "bounce": false,
+            "rate": 1,
+            "duration": 30,
+            "time": 0
+          }
+        },
+        {"call": "$get", "args": ["eyeInterp"], "expect": "hermite"},
+        {"call": "$get", "args": ["centerInterp"], "expect": "linear"}
+      ]
+    },
+    {
+      "name": "CameraTrack — eval: projection scalars, near/far lerp, up nlerp, one keyframe",
+      "class": "CameraTrack",
+      "tol": "f64",
+      "steps": [
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [0, 0, 0],
+            "center": [0, 0, 0],
+            "up": [0, 1, 0],
+            "fov": null,
+            "halfHeight": null,
+            "near": 0.1,
+            "far": 1000
+          }
+        },
+        {"call": "add", "args": [{"eye": [0, 0, 5], "fov": 1.0471975511965976, "near": 0.1, "far": 100}]},
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [0, 0, 5],
+            "center": [0, 0, 0],
+            "up": [0, 1, 0],
+            "fov": 1.0471975511965976,
+            "halfHeight": null,
+            "near": 0.1,
+            "far": 100
+          }
+        },
+        {"call": "play"},
+        {"call": "$get", "args": ["playing"], "expect": false},
+        {
+          "call": "add",
+          "args": [{"eye": [0, 5, 5], "up": [1, 0, 0], "fov": 1.5707963267948966, "near": 1, "far": 200}]
+        },
+        {"call": "add", "args": [{"eye": [5, 5, 5], "center": [1, 1, 1], "halfHeight": 2}]},
+        {"call": "add", "args": [{"eye": [5, 0, 5], "halfHeight": 4, "near": 2, "far": 20}]},
+        {"call": "seek", "args": [0.5, 0]},
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [-0.31250000000000006, 2.380635621484342, 5],
+            "center": [0, 0, 0],
+            "up": [0.7071067811865475, 0.7071067811865475, 0],
+            "fov": 1.308996938995747,
+            "halfHeight": null,
+            "near": 0.55,
+            "far": 150
+          }
+        },
+        {"call": "seek", "args": [0.5, 1]},
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [2.5, 5.625, 5],
+            "center": [0.5, 0.5, 0.5],
+            "up": [0.7071067811865475, 0.7071067811865475, 0],
+            "fov": 1.5707963267948966,
+            "halfHeight": 2,
+            "near": 0.55,
+            "far": 600
+          }
+        },
+        {"call": "seek", "args": [0.5, 2]},
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [5.3125, 2.380635621484342, 5],
+            "center": [0.5, 0.5, 0.5],
+            "up": [0, 1, 0],
+            "fov": null,
+            "halfHeight": 3,
+            "near": 1.05,
+            "far": 510
+          }
+        },
+        {"call": "seek", "args": [1]},
+        {
+          "call": "eval",
+          "expect": {"eye": [5, 0, 5], "center": [0, 0, 0], "up": [0, 1, 0], "fov": null, "halfHeight": 4, "near": 2, "far": 20}
+        },
+        {"call": "seek", "args": [0]},
+        {"call": "play", "args": [{"duration": 2}]},
+        {"call": "tick", "expect": true},
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [-0.31250000000000006, 2.380635621484342, 5],
+            "center": [0, 0, 0],
+            "up": [0.7071067811865475, 0.7071067811865475, 0],
+            "fov": 1.308996938995747,
+            "halfHeight": null,
+            "near": 0.55,
+            "far": 150
+          }
+        },
+        {
+          "call": "info",
+          "expect": {
+            "keyframes": 4,
+            "segments": 3,
+            "seg": 0,
+            "f": 1,
+            "playing": true,
+            "loop": false,
+            "bounce": false,
+            "rate": 1,
+            "duration": 2,
+            "time": 0.16666666666666666
+          }
+        }
+      ]
+    },
+    {
+      "name": "CameraTrack — samplers and interpolation modes",
+      "class": "CameraTrack",
+      "tol": "f64",
+      "steps": [
+        {"call": "sampleEye", "args": [[0, 0, 0], 0, 0.5], "expect": [0, 0, 0]},
+        {
+          "call": "mat4Eye",
+          "args": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0, 0.5],
+          "expect": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+          "tol": "f32"
+        },
+        {
+          "call": "add",
+          "args": [
+            [
+              {"eye": [0, 0, 5]},
+              {"eye": [5, 0, 5], "center": [1, 0, 0], "eyeTanIn": [0, 3, 0]},
+              {"eye": [5, 0, -5], "center": [2, 0, 0], "centerTanOut": [0, 0, 4]},
+              {"eye": [0, 0, -5], "center": [0, 0, 0], "up": [0, 0, 1]}
+            ]
+          ]
+        },
+        {"call": "sampleEye", "args": [[0, 0, 0], 0, 0.5], "expect": [2.693135621484342, -0.375, 5]},
+        {"call": "sampleEye", "args": [[0, 0, 0], 1, 0.5], "expect": [5.517766952966369, 0.375, 0.5177669529663689]},
+        {"call": "sampleEye", "args": [[0, 0, 0], 2, 0.5], "expect": [2.3270190979675265, 0, -5.366116523516816]},
+        {"call": "sampleCenter", "args": [[0, 0, 0], 0, 0.5], "expect": [0.5, 0, 0]},
+        {"call": "sampleCenter", "args": [[0, 0, 0], 1, 0.5], "expect": [1.5, 0, 0]},
+        {"call": "sampleCenter", "args": [[0, 0, 0], 2, 0.5], "expect": [1, 0, 0]},
+        {"call": "$set", "args": ["centerInterp", "hermite"]},
+        {"call": "sampleCenter", "args": [[0, 0, 0], 1, 0.5], "expect": [1.625, 0, -0.5]},
+        {"call": "sampleCenter", "args": [[0, 0, 0], 2, 0.5], "expect": [1.1035533905932737, 0, 0.5]},
+        {"call": "$set", "args": ["eyeInterp", "step"]},
+        {"call": "sampleEye", "args": [[0, 0, 0], 1, 0.5], "expect": [5, 0, 5]},
+        {"call": "$set", "args": ["eyeInterp", "linear"]},
+        {"call": "sampleEye", "args": [[0, 0, 0], 1, 0.5], "expect": [5, 0, 0]},
+        {"call": "$set", "args": ["eyeInterp", "hermite"]},
+        {
+          "call": "eyeTangents",
+          "args": [[0, 0, 0], [0, 0, 0], 0],
+          "writes": {"0": [1.5450849718747377, 0, 0], "1": [1.5450849718747377, 0, 0]}
+        },
+        {"call": "eyeTangents", "args": [[0, 0, 0], [0, 0, 0], 1], "writes": {"0": [0, 3, 0], "1": [0, 3, 0]}},
+        {
+          "call": "eyeTangents",
+          "args": [[0, 0, 0], [0, 0, 0], 3],
+          "writes": {"0": [-1.5450849718747377, 0, 0], "1": [-1.5450849718747377, 0, 0]}
+        },
+        {"call": "centerTangents", "args": [[0, 0, 0], [0, 0, 0], 2], "writes": {"0": [0, 0, 4], "1": [0, 0, 4]}},
+        {
+          "call": "centerTangents",
+          "args": [[0, 0, 0], [0, 0, 0], 3],
+          "writes": {"0": [-0.8284271247461898, 0, 0], "1": [-0.8284271247461898, 0, 0]}
+        },
+        {
+          "call": "mat4Eye",
+          "args": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 2, 0.5],
+          "expect": [-0.9591477428707258, 0.2000445042309236, -0.2000445042309236, 0, 0.1958305954121723, 0.9797868116723167, 0.04084337857609344, 0, 0.20417146041135645, 0, -0.9789351432824821, 0, 2.3270190979675265, 0, -5.366116523516816, 1],
+          "tol": "f32"
+        },
+        {"call": "seek", "args": [0.5]},
+        {"call": "sampleEye", "args": [[0, 0, 0]], "expect": [5.517766952966369, 0.375, 0.5177669529663689]},
+        {"call": "sampleCenter", "args": [[0, 0, 0]], "expect": [1.625, 0, -0.5]},
+        {
+          "call": "mat4Eye",
+          "args": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+          "expect": [0.2529483437523887, 0, -0.9674797855216011, 0, -0.08977979801428325, 0.9956849934726519, -0.023472998144238647, 0, 0.9633051039319982, 0.0927975957305195, 0.2518568699980153, 0, 5.517766952966369, 0.375, 0.5177669529663689, 1],
+          "tol": "f32"
+        },
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [5.517766952966369, 0.375, 0.5177669529663689],
+            "center": [1.625, 0, -0.5],
+            "up": [0, 1, 0],
+            "fov": null,
+            "halfHeight": null,
+            "near": 0.1,
+            "far": 1000
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -58,6 +58,34 @@ export function mat4FromBasis(out, rx,ry,rz, ux,uy,uz, fx,fy,fz, tx,ty,tz) {
   return out;
 }
 
+// Lookat basis scratch — right (0–2), up (3–5), back (6–8): unit, world space.
+const _lb = new Float64Array(9);
+
+/**
+ * Orthonormal lookat basis into `_lb`: back = eye − center, right = up × back,
+ * up = back × right. When the view direction is parallel to the up hint the
+ * hint is re-seeded from the world axis least aligned with it — the seed
+ * qFromUnitVectors and qFromLookDir use — so the basis is always a rotation.
+ */
+function _lookBasis(ex,ey,ez, cx,cy,cz, ux,uy,uz) {
+  let zx=ex-cx, zy=ey-cy, zz=ez-cz;
+  const zl=Math.sqrt(zx*zx+zy*zy+zz*zz)||1;
+  zx/=zl; zy/=zl; zz/=zl;
+  let xx=uy*zz-uz*zy, xy=uz*zx-ux*zz, xz=ux*zy-uy*zx;
+  let xl=Math.sqrt(xx*xx+xy*xy+xz*xz);
+  if (xl < 1e-8) {                                              // view ∥ up: re-seed up
+    const ax=Math.abs(zx), ay=Math.abs(zy), az=Math.abs(zz);
+    ux=0; uy=0; uz=0;
+    if (ax <= ay && ax <= az) ux=1; else if (ay <= az) uy=1; else uz=1;
+    xx=uy*zz-uz*zy; xy=uz*zx-ux*zz; xz=ux*zy-uy*zx;
+    xl=Math.sqrt(xx*xx+xy*xy+xz*xz)||1;
+  }
+  xx/=xl; xy/=xl; xz/=xl;
+  _lb[0]=xx; _lb[1]=xy; _lb[2]=xz;
+  _lb[3]=zy*xz-zz*xy; _lb[4]=zz*xx-zx*xz; _lb[5]=zx*xy-zy*xx;
+  _lb[6]=zx; _lb[7]=zy; _lb[8]=zz;
+}
+
 /**
  * View matrix (world→eye) from lookat parameters.
  * Camera looks along −Z in eye space; right = normalize(up × (−Z)).
@@ -66,16 +94,12 @@ export function mat4FromBasis(out, rx,ry,rz, ux,uy,uz, fx,fy,fz, tx,ty,tz) {
  * @param {Float32Array|number[]} out  16-element destination.
  * @param {number} ex,ey,ez   Eye (camera) position.
  * @param {number} cx,cy,cz   Look-at target.
- * @param {number} ux,uy,uz   World up hint (need not be unit).
+ * @param {number} ux,uy,uz   World up hint (need not be unit; re-seeded when
+ *                            parallel to the view direction).
  */
 export function mat4View(out, ex,ey,ez, cx,cy,cz, ux,uy,uz) {
-  let zx=ex-cx, zy=ey-cy, zz=ez-cz;
-  const zl=Math.sqrt(zx*zx+zy*zy+zz*zz)||1;
-  zx/=zl; zy/=zl; zz/=zl;
-  let xx=uy*zz-uz*zy, xy=uz*zx-ux*zz, xz=ux*zy-uy*zx;
-  const xl=Math.sqrt(xx*xx+xy*xy+xz*xz)||1;
-  xx/=xl; xy/=xl; xz/=xl;
-  const yx=zy*xz-zz*xy, yy=zz*xx-zx*xz, yz=zx*xy-zy*xx;
+  _lookBasis(ex,ey,ez, cx,cy,cz, ux,uy,uz);
+  const xx=_lb[0],xy=_lb[1],xz=_lb[2], yx=_lb[3],yy=_lb[4],yz=_lb[5], zx=_lb[6],zy=_lb[7],zz=_lb[8];
   out[0]=xx;              out[1]=yx;              out[2]=zx;              out[3]=0;
   out[4]=xy;              out[5]=yy;              out[6]=zy;              out[7]=0;
   out[8]=xz;              out[9]=yz;              out[10]=zz;             out[11]=0;
@@ -94,16 +118,12 @@ export function mat4View(out, ex,ey,ez, cx,cy,cz, ux,uy,uz) {
  * @param {Float32Array|number[]} out  16-element destination.
  * @param {number} ex,ey,ez   Eye position.
  * @param {number} cx,cy,cz   Look-at target.
- * @param {number} ux,uy,uz   World up hint.
+ * @param {number} ux,uy,uz   World up hint (need not be unit; re-seeded when
+ *                            parallel to the view direction).
  */
 export function mat4Eye(out, ex,ey,ez, cx,cy,cz, ux,uy,uz) {
-  let zx=ex-cx, zy=ey-cy, zz=ez-cz;
-  const zl=Math.sqrt(zx*zx+zy*zy+zz*zz)||1;
-  zx/=zl; zy/=zl; zz/=zl;
-  let xx=uy*zz-uz*zy, xy=uz*zx-ux*zz, xz=ux*zy-uy*zx;
-  const xl=Math.sqrt(xx*xx+xy*xy+xz*xz)||1;
-  xx/=xl; xy/=xl; xz/=xl;
-  const yx=zy*xz-zz*xy, yy=zz*xx-zx*xz, yz=zx*xy-zy*xx;
+  _lookBasis(ex,ey,ez, cx,cy,cz, ux,uy,uz);
+  const xx=_lb[0],xy=_lb[1],xz=_lb[2], yx=_lb[3],yy=_lb[4],yz=_lb[5], zx=_lb[6],zy=_lb[7],zz=_lb[8];
   out[0]=xx;  out[1]=xy;  out[2]=xz;  out[3]=0;
   out[4]=yx;  out[5]=yy;  out[6]=yz;  out[7]=0;
   out[8]=zx;  out[9]=zy;  out[10]=zz; out[11]=0;
