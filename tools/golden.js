@@ -1204,6 +1204,20 @@ const GCAM_O = { eye: [0, 0, 10], center: [0, 0, 0], up: [0, 1, 0], fov: null, h
 const GP_GL  = tree.mat4Persp(new Array(16).fill(0), -2, 2, -1, 1, 1, 5, -1);
 const GP_GPU = tree.mat4Persp(new Array(16).fill(0), -2, 2, -1, 1, 1, 5, 0);
 const GO_GL  = tree.mat4Ortho(new Array(16).fill(0), -3, 3, -3, 3, 1, 5, -1);
+// Live subjects for pathLines / helmRigLines / locusLines, built by the codec.
+const GT3  = { $track: { class: 'PoseTrack', add: [{ pos: [0, 0, 0] }, { pos: [10, 0, 0] }, { pos: [10, 10, 0] }] } };
+const GT3L = { $track: { class: 'PoseTrack', add: [{ pos: [0, 0, 0] }, { pos: [10, 0, 0] }, { pos: [10, 10, 0] }], set: { posInterp: 'linear' } } };
+const GT1  = { $track: { class: 'PoseTrack', add: [{ pos: [1, 2, 3] }] } };
+const GC3  = { $track: { class: 'CameraTrack', add: [
+  { eye: [0, 0, 10], center: [0, 0, 0], eyeTanOut: [5, 0, 0] }, { eye: [10, 0, 0], center: [0, 0, 0] }, { eye: [0, 0, -10], center: [1, 0, 0] },
+] } };
+const GH0 = { $helm: {} };
+const GHF = { $helm: { feed: [[100, 0, 0], [0, 0, 50]] } };                     // lane 0 → Tx, lane 2 → Ry on the default profile
+const GV16 = tree.mat4View(new Array(16).fill(0), 0, 0, 10, 0, 0, 0, 0, 1, 0);
+const GCS = { $constraint: [tree.SPHERE, { radius: 2, anchor: [1, 0, 0] }] };
+const GCP = { $constraint: [tree.PLANE,  { anchor: [0, 1, 0], normal: [0, 1, 0] }] };
+const GCA = { $constraint: [tree.AXIS,   { axis: [0, 0, 1], extent: [-2, 3] }] };
+const GCD = { $constraint: [tree.DIAL,   { axis: [0, 1, 0], radius: 3, zero: [1, 0, 0] }] };
 
 const gizmo = {
   functions: {
@@ -1264,6 +1278,42 @@ const gizmo = {
       [A(8), [0, 0, 0], [3, 0, 0], [3, 3, 0], [0, 3, 0], { samples: 4 }],
       [A(4, { color: true }), [1, 2, 3], [0, 0, 1], [1, 2, 5], [0, 0, 1], { samples: 2, color: [0, 1, 1] }],
       [A(2), [0, 0, 0], [3, 0, 0], [3, 3, 0], [0, 3, 0], { samples: 4 }],       // capacity: needs 8, writes 2
+    ], { writes: [0] }),
+    pathLines: f64([
+      [A(64), GT3, { samples: 4 }],                                             // PATH 16 + CONTROLS 4 + TANGENTS 12 = 32
+      [A(64), GT3, { samples: 4, bits: tree.PATH }],                            // 16
+      [A(64), GT3, { bits: tree.TANGENTS, tangentScale: 1 }],                   // 12, unscaled
+      [A(64), GT3L, { samples: 2, bits: tree.PATH | tree.CONTROLS }],           // linear posInterp: 8 + 4
+      [A(64), GC3, { samples: 2, bits: tree.PATH | tree.CENTER }],              // eye path 8 + CENTER 24 = 32
+      [A(64), GC3, { samples: 2, bits: tree.PATH | tree.CONTROLS, target: 'center' }],   // center path 8 + 4
+      [A(64), GC3, { bits: tree.TANGENTS_OUT, tangentScale: 1 }],               // the stored eye tangent at keyframe 0: 6
+      [A(8), GT1, {}],                                                          // one keyframe: no segments; its tangents are zero-length
+      [A(4), GT3, { samples: 4 }],                                              // capacity: needs 32, writes 4
+    ], { writes: [0] }),
+    helmRigLines: f64([
+      [A(492, { color: true }), GH0, {}],                                       // at rest: dim arrows 30 + rings 288 = 318
+      [A(492, { color: true }), GHF, {}],                                       // Tx and Ry active: + arrow 10 + arc 48 = 376
+      [A(492, { color: true, labels: true }), GHF, { identify: true, size: 50 }],   // six labels
+      [A(492), GH0, { bits: tree.TRANSLATE }],                                  // 30
+      [A(492), GHF, { bits: tree.ROTATE }],                                     // 288 + 48
+      [A(20, { color: true }), GHF, {}],                                        // capacity: needs 376, writes 20
+    ], { writes: [0] }),
+    locusLines: f32([
+      [A(400), GCS, { point: [3, 0, 0], mat4View: GV16, bits: tree.AIM | tree.LOCUS | tree.RING }],   // 2 + 288 + 96
+      [A(400), GCS, { point: [3, 0, 0], mat4View: GV16 }],                      // AIM | LOCUS: 290
+      [A(16), GCP, { point: [2, 1, 2], bits: tree.AIM | tree.LOCUS }],          // 2 + 8
+      [A(8), GCP, { bits: tree.LOCUS | tree.RING }],                            // the square once: 8
+      [A(8), GCA, { point: [0, 0, 1], bits: tree.AIM | tree.LOCUS }],           // 2 + 2
+      [A(200, { color: true }), GCD, { point: [3, 0, 0], color: [1, 0, 1] }],   // 2 + 96
+      [A(16), { kind: 1, view: true }, { point: [1, 2, 3], mat4View: GV16, bits: tree.LOCUS }],   // the host's VIEW: 8
+      [A(8), GCA, { bits: tree.AIM }],                                          // no point: 0
+      [A(10), GCS, { bits: tree.LOCUS }],                                       // capacity: needs 288, writes 10
+    ], { writes: [0] }),
+    paneTris: f64([
+      [A(6, { texcoord: true }), [-1, 1, 0], [1, 1, 0], [1, -1, 0], [-1, -1, 0], {}],
+      [A(6, { texcoord: true, color: true }), [-1, 1, 0], [1, 1, 0], [1, -1, 0], [-1, -1, 0], { uvs: [0, 0, 1, 0, 1, 1, 0, 1], color: [1, 0, 0] }],
+      [A(6), [0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0], {}],                   // no texcoord array: positions only
+      [A(3, { texcoord: true }), [-1, 1, 0], [1, 1, 0], [1, -1, 0], [-1, -1, 0], {}],   // capacity: needs 6, writes 3
     ], { writes: [0] }),
   },
 };

@@ -52,8 +52,12 @@
 import {
   X, _X, Y, _Y, Z, _Z, LABELS,
   NEAR, FAR, BODY, APEX,
+  PATH, CENTER, CONTROLS, TANGENTS_IN, TANGENTS_OUT,
+  TRANSLATE, ROTATE,
+  AIM, LOCUS, RING,
+  SPHERE, PLANE, AXIS, DIAL,
   CIRCLE, WEBGL,
-  COLOR_X, COLOR_Y, COLOR_Z,
+  COLOR_X, COLOR_Y, COLOR_Z, COLOR_DIM,
 } from './constants.js';
 import {
   projIsOrtho, projNear, projFar, projLeft, projRight, projTop, projBottom, mat4MulPoint,
@@ -68,6 +72,12 @@ const _E   = new Float64Array(16);             // a camera state's eye matrix
 const _p3  = [0, 0, 0];                        // a transformed corner / a sampled point
 const _q3  = [0, 0, 0];                        // the previous sampled point
 const _c24 = new Float64Array(24);             // frustum corners scratch
+const _tIn = [0, 0, 0], _tOut = [0, 0, 0];     // a keyframe's tangents
+const _act = [0, 0, 0, 0, 0, 0];               // a helm's activity
+const _tip = [0, 0, 0], _ha = [0, 0, 0];       // an arrow's tip and head base
+const _AXES = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+const _b0 = [0, 0, 0], _b1 = [0, 0, 0], _b2 = [0, 0, 0];   // a locus basis
+const _UV_DEFAULT = [0, 1, 1, 1, 1, 0, 0, 0];  // paneTris: p0 top-left → (0, 1), clockwise
 
 // =========================================================================
 // G1  Arrays — the one allocating call, growth, capacity
@@ -158,6 +168,43 @@ function _vertex(x, y, z) {
 function _line(x0, y0, z0, x1, y1, z1) {
   _vertex(x0, y0, z0);
   _vertex(x1, y1, z1);
+}
+
+/** A vertex with a texture coordinate (written when out.texcoord exists). */
+function _vertexUV(x, y, z, u, v) {
+  const n = _w.n;
+  _vertex(x, y, z);
+  if (_w.tex && n < _w.cap) { _w.tex[2*n] = u; _w.tex[2*n + 1] = v; }
+}
+
+/** Normalise v in place; a zero vector becomes (dx, dy, dz). */
+function _unit(v, dx, dy, dz) {
+  const l = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+  if (l < 1e-9) { v[0] = dx; v[1] = dy; v[2] = dz; return v; }
+  v[0] /= l; v[1] /= l; v[2] /= l;
+  return v;
+}
+
+/** Orthonormal in-plane basis (ub, vb) for a unit normal n, seeded from the least-aligned axis. */
+function _basis(n, ub, vb) {
+  const ax = Math.abs(n[0]), ay = Math.abs(n[1]), az = Math.abs(n[2]);
+  let rx = 0, ry = 0, rz = 0;
+  if (ax <= ay && ax <= az) rx = 1; else if (ay <= az) ry = 1; else rz = 1;
+  ub[0] = ry*n[2] - rz*n[1]; ub[1] = rz*n[0] - rx*n[2]; ub[2] = rx*n[1] - ry*n[0];
+  _unit(ub, 1, 0, 0);
+  vb[0] = n[1]*ub[2] - n[2]*ub[1]; vb[1] = n[2]*ub[0] - n[0]*ub[2]; vb[2] = n[0]*ub[1] - n[1]*ub[0];
+}
+
+/** The four edges of a square of half-extent h at c, spanned by u, v. */
+function _square(c, u, v, h) {
+  const x0 = c[0] - h*u[0] - h*v[0], y0 = c[1] - h*u[1] - h*v[1], z0 = c[2] - h*u[2] - h*v[2];
+  const x1 = c[0] + h*u[0] - h*v[0], y1 = c[1] + h*u[1] - h*v[1], z1 = c[2] + h*u[2] - h*v[2];
+  const x2 = c[0] + h*u[0] + h*v[0], y2 = c[1] + h*u[1] + h*v[1], z2 = c[2] + h*u[2] + h*v[2];
+  const x3 = c[0] - h*u[0] + h*v[0], y3 = c[1] - h*u[1] + h*v[1], z3 = c[2] - h*u[2] + h*v[2];
+  _line(x0, y0, z0, x1, y1, z1);
+  _line(x1, y1, z1, x2, y2, z2);
+  _line(x2, y2, z2, x3, y3, z3);
+  _line(x3, y3, z3, x0, y0, z0);
 }
 
 /** Close the write: count ← what fits; return what was needed. */
@@ -449,5 +496,259 @@ export function hermiteLines(out, p0, t0, p1, t1, opts) {
     if (i > 0) _line(_q3[0], _q3[1], _q3[2], _p3[0], _p3[1], _p3[2]);
     _q3[0] = _p3[0]; _q3[1] = _p3[1]; _q3[2] = _p3[2];
   }
+  return _end(out);
+}
+
+// =========================================================================
+// G5  Path, helm rig, locus, pane
+// =========================================================================
+
+/**
+ * A PoseTrack or CameraTrack's path by bit, over the track's own samplers
+ * (samplePos / sampleEye / sampleCenter and the tangent readers), so the
+ * interpolation modes are honoured: PATH the sampled polyline, `samples`
+ * per segment; CONTROLS the straight control polygon; TANGENTS_IN /
+ * TANGENTS_OUT the tangent at each keyframe scaled by `tangentScale`;
+ * CENTER (camera tracks) the gaze line eye → center per keyframe and a
+ * three-axis star of half-size `centerSize` at the center. `target`
+ * ('eye' or 'center') picks a camera track's path for the first three
+ * bits. Markers and handles are the bridge's composition.
+ *
+ * Count: 2 · samples · segments (PATH) + 2 · segments (CONTROLS) +
+ * 2 · keyframes per tangent bit + 8 · keyframes (CENTER).
+ *
+ * @param {object} out    Arrays object.
+ * @param {object} track  PoseTrack or CameraTrack.
+ * @param {{ bits?:number, samples?:number, tangentScale?:number, target?:string,
+ *           centerSize?:number, color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function pathLines(out, track, opts) {
+  const o = opts || {};
+  const bits = o.bits ?? (PATH | CONTROLS | TANGENTS_IN | TANGENTS_OUT);
+  const N = Math.max(1, (o.samples ?? 32) | 0);
+  const ts = o.tangentScale ?? 0.25;
+  const cs = o.centerSize ?? 4;
+  const kfs = track.keyframes, n = kfs.length;
+  const isCamera = typeof track.sampleEye === 'function';
+  const useCenter = isCamera && o.target === 'center';
+  const field    = isCamera ? (useCenter ? 'center'         : 'eye')         : 'pos';
+  const sampler  = isCamera ? (useCenter ? 'sampleCenter'   : 'sampleEye')   : 'samplePos';
+  const tangents = isCamera ? (useCenter ? 'centerTangents' : 'eyeTangents') : 'tangents';
+  _begin(out);
+  _color(o.color);
+  if ((bits & PATH) && n > 1) {
+    for (let seg = 0; seg < n - 1; seg++) {
+      for (let i = 0; i <= N; i++) {
+        track[sampler](_p3, seg, i / N);
+        if (i > 0) _line(_q3[0], _q3[1], _q3[2], _p3[0], _p3[1], _p3[2]);
+        _q3[0] = _p3[0]; _q3[1] = _p3[1]; _q3[2] = _p3[2];
+      }
+    }
+  }
+  if (bits & CONTROLS) {
+    for (let i = 0; i < n - 1; i++) {
+      const a = kfs[i][field], b = kfs[i + 1][field];
+      _line(a[0], a[1], a[2], b[0], b[1], b[2]);
+    }
+  }
+  if (bits & (TANGENTS_IN | TANGENTS_OUT)) {
+    for (let i = 0; i < n; i++) {
+      track[tangents](_tIn, _tOut, i);
+      const k = kfs[i][field];
+      if (bits & TANGENTS_IN)  _line(k[0] - ts*_tIn[0], k[1] - ts*_tIn[1], k[2] - ts*_tIn[2], k[0], k[1], k[2]);
+      if (bits & TANGENTS_OUT) _line(k[0], k[1], k[2], k[0] + ts*_tOut[0], k[1] + ts*_tOut[1], k[2] + ts*_tOut[2]);
+    }
+  }
+  if ((bits & CENTER) && isCamera) {
+    for (let i = 0; i < n; i++) {
+      const e = kfs[i].eye, c = kfs[i].center;
+      _line(e[0], e[1], e[2], c[0], c[1], c[2]);
+      _line(c[0] - cs, c[1], c[2], c[0] + cs, c[1], c[2]);
+      _line(c[0], c[1] - cs, c[2], c[0], c[1] + cs, c[2]);
+      _line(c[0], c[1], c[2] - cs, c[0], c[1], c[2] + cs);
+    }
+  }
+  return _end(out);
+}
+
+/** An arrow along principal axis `axis` (0 X, 1 Y, 2 Z): signed length L, head size h — 5 lines. */
+function _arrow(axis, L, h) {
+  const a = (axis + 1) % 3, b = (axis + 2) % 3;
+  _tip[0] = _tip[1] = _tip[2] = 0; _tip[axis] = L;
+  _line(0, 0, 0, _tip[0], _tip[1], _tip[2]);
+  const s = Math.sign(L) || 1;
+  _ha[0] = _ha[1] = _ha[2] = 0; _ha[axis] = L - s*h;
+  _ha[a] =  h*0.5; _line(_tip[0], _tip[1], _tip[2], _ha[0], _ha[1], _ha[2]);
+  _ha[a] = -h*0.5; _line(_tip[0], _tip[1], _tip[2], _ha[0], _ha[1], _ha[2]);
+  _ha[a] = 0;
+  _ha[b] =  h*0.5; _line(_tip[0], _tip[1], _tip[2], _ha[0], _ha[1], _ha[2]);
+  _ha[b] = -h*0.5; _line(_tip[0], _tip[1], _tip[2], _ha[0], _ha[1], _ha[2]);
+}
+
+/**
+ * A helm's rig, colour always semantic: per translation channel a dim
+ * baseline arrow of signed length sign · size · sens / 0.30 and, while the
+ * channel's activity is non-zero, a bright arrow of length ∝ |activity| /
+ * (sens · fullScale); per rotation channel a dim ring of radius size / 2 ·
+ * sens / 0.0025 and a bright arc sweeping π · f in the live direction.
+ * Dim and bright are the alpha of the written colour (COLOR_DIM, 1). With
+ * `identify`, one anchor per channel goes to out.labels as { x, y, z,
+ * text: 'L' + lane }. Orientation is the caller's M.
+ *
+ * Count: 10 · 3 · 2 (arrows) + 96 · 3 (rings) + 48 · 3 (arcs), at most 492;
+ * the bright half only while a channel is active.
+ *
+ * @param {object} out   Arrays object.
+ * @param {object} helm  A PoseHelm (profile, fullScale, activity).
+ * @param {{ size?:number, bits?:number, identify?:boolean }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function helmRigLines(out, helm, opts) {
+  const o = opts || {};
+  const size = o.size ?? 100;
+  const bits = o.bits ?? (TRANSLATE | ROTATE);
+  const identify = o.identify === true;
+  const prof = helm.profile;
+  const head = size * 0.08, ringR0 = size * 0.5;
+  const TREF = 0.30, RREF = 0.0025, FULL = helm.fullScale, ARC_FULL = Math.PI;
+  helm.activity(_act);
+  _begin(out);
+  const labels = identify && out.labels ? out.labels : null;
+  if (bits & TRANSLATE) {
+    const T = [prof.Tx, prof.Ty, prof.Tz];
+    for (let ax = 0; ax < 3; ax++) {
+      const ch = T[ax];
+      const L = ch.sign * size * (ch.sens / TREF);
+      _color(_AXIS_COLORS[ax], COLOR_DIM);
+      _arrow(ax, L, head);
+      const a = _act[ax];
+      if (a !== 0) {
+        const f = Math.min(Math.abs(a) / (ch.sens * FULL), 1);
+        _color(_AXIS_COLORS[ax], 1);
+        _arrow(ax, Math.sign(a) * f * Math.abs(L), head);
+      }
+      if (labels) {
+        const lp = [0, 0, 0]; lp[ax] = L + ch.sign * head * 1.5;
+        labels.push({ x: lp[0], y: lp[1], z: lp[2], text: 'L' + ch.lane });
+      }
+    }
+  }
+  if (bits & ROTATE) {
+    const R = [prof.Rp, prof.Ry, prof.Rr];       // pitch ⊥ X, yaw ⊥ Y, roll ⊥ Z
+    for (let ax = 0; ax < 3; ax++) {
+      const ch = R[ax];
+      const r = ringR0 * (ch.sens / RREF);
+      const u = _AXES[(ax + 1) % 3], v = _AXES[(ax + 2) % 3];
+      _color(_AXIS_COLORS[ax], COLOR_DIM);
+      _ring(0, 0, 0, r, u, v, 48, TWO_PI);
+      const a = _act[3 + ax];
+      if (a !== 0) {
+        const f = Math.min(Math.abs(a) / (ch.sens * FULL), 1);
+        _color(_AXIS_COLORS[ax], 1);
+        _ring(0, 0, 0, r, u, v, 24, Math.sign(a) * f * ARC_FULL);
+      }
+      if (labels) {
+        const lp = [0, 0, 0]; lp[(ax + 1) % 3] = r;
+        labels.push({ x: lp[0], y: lp[1], z: lp[2], text: 'L' + ch.lane });
+      }
+    }
+  }
+  return _end(out);
+}
+
+/**
+ * A handle's stroked parts by bit. AIM: anchor → `point` (the handle's
+ * current point, read by the caller with value). LOCUS by constraint.kind:
+ * SPHERE three great circles about the anchor; PLANE a square of
+ * half-extent 100 in the plane's basis; AXIS the segment anchor + [min,
+ * max] · u; DIAL the ring in the dial plane; a constraint flagged `view`
+ * (the host's VIEW) a screen-aligned square of half-extent 100 at `point`,
+ * its basis the camera's right and up read off `mat4View`. RING: SPHERE
+ * the view-facing limb, a ring perpendicular to anchor − eye (the eye from
+ * `mat4View`); PLANE the border of the locus square (written once when
+ * both bits ask for it). A constraint supplying locus(out, opts) is
+ * dispatched to it. The HANDLE dot is not a line and not generated here.
+ *
+ * Count: AIM 2; LOCUS SPHERE 288 · PLANE 8 · AXIS 2 · DIAL 96 · view 8;
+ * RING SPHERE 96 · PLANE 8 (shared with LOCUS); at most 386.
+ *
+ * @param {object} out         Arrays object.
+ * @param {object} constraint  A contract-conforming constraint.
+ * @param {{ bits?:number, mat4View?:ArrayLike<number>, point?:number[], color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function locusLines(out, constraint, opts) {
+  const o = opts || {};
+  if (typeof constraint.locus === 'function') return constraint.locus(out, o);
+  const bits = o.bits ?? (AIM | LOCUS);
+  const c = constraint, a = c.anchor, pt = o.point, V = o.mat4View;
+  _begin(out);
+  _color(o.color);
+  if ((bits & AIM) && a && pt) _line(a[0], a[1], a[2], pt[0], pt[1], pt[2]);
+  if (c.view === true) {
+    if ((bits & LOCUS) && pt && V) {
+      _b0[0] = V[0]; _b0[1] = V[4]; _b0[2] = V[8];      // the camera's right
+      _b1[0] = V[1]; _b1[1] = V[5]; _b1[2] = V[9];      // the camera's up
+      _square(pt, _b0, _b1, 100);
+    }
+  } else if (c.kind === SPHERE && a) {
+    if (bits & LOCUS) {
+      _ring(a[0], a[1], a[2], c.radius, _AXES[0], _AXES[1], 48, TWO_PI);
+      _ring(a[0], a[1], a[2], c.radius, _AXES[1], _AXES[2], 48, TWO_PI);
+      _ring(a[0], a[1], a[2], c.radius, _AXES[2], _AXES[0], 48, TWO_PI);
+    }
+    if ((bits & RING) && V) {
+      // eye = −Rᵀ t of the view matrix; the limb is ⊥ anchor − eye
+      const tx = V[12], ty = V[13], tz = V[14];
+      _b2[0] = a[0] + (V[0]*tx + V[1]*ty + V[2]*tz);
+      _b2[1] = a[1] + (V[4]*tx + V[5]*ty + V[6]*tz);
+      _b2[2] = a[2] + (V[8]*tx + V[9]*ty + V[10]*tz);
+      _unit(_b2, 0, 0, 1);
+      _basis(_b2, _b0, _b1);
+      _ring(a[0], a[1], a[2], c.radius, _b0, _b1, 48, TWO_PI);
+    }
+  } else if (c.kind === PLANE && a) {
+    if (bits & (LOCUS | RING)) {
+      _basis(c.n, _b0, _b1);
+      _square(a, _b0, _b1, 100);
+    }
+  } else if (c.kind === AXIS && a) {
+    if (bits & LOCUS) {
+      const u = c.u;
+      _line(a[0] + c.min*u[0], a[1] + c.min*u[1], a[2] + c.min*u[2],
+            a[0] + c.max*u[0], a[1] + c.max*u[1], a[2] + c.max*u[2]);
+    }
+  } else if (c.kind === DIAL && a) {
+    if (bits & LOCUS) _ring(a[0], a[1], a[2], c.radius, c.r0, c.r1, 48, TWO_PI);
+  }
+  return _end(out);
+}
+
+/**
+ * A textured quad as two triangles (p0, p1, p2) (p0, p2, p3) — the winding
+ * of the corner order — with texcoord written when the array exists.
+ * Default uvs: p0 (top-left) → (0, 1), p1 → (1, 1), p2 → (1, 0), p3 →
+ * (0, 0), so a texture in GL's bottom-up space reads upright with no
+ * flip; `opts.uvs` overrides, four pairs flat in corner order.
+ *
+ * Count: 6.
+ *
+ * @param {object} out  Arrays object.
+ * @param {number[]} p0,p1,p2,p3  Corners, top-left clockwise.
+ * @param {{ uvs?:number[], color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function paneTris(out, p0, p1, p2, p3, opts) {
+  const o = opts || {};
+  const uv = o.uvs || _UV_DEFAULT;
+  _begin(out);
+  _color(o.color);
+  _vertexUV(p0[0], p0[1], p0[2], uv[0], uv[1]);
+  _vertexUV(p1[0], p1[1], p1[2], uv[2], uv[3]);
+  _vertexUV(p2[0], p2[1], p2[2], uv[4], uv[5]);
+  _vertexUV(p0[0], p0[1], p0[2], uv[0], uv[1]);
+  _vertexUV(p2[0], p2[1], p2[2], uv[4], uv[5]);
+  _vertexUV(p3[0], p3[1], p3[2], uv[6], uv[7]);
   return _end(out);
 }
