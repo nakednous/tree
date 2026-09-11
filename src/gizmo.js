@@ -49,6 +49,16 @@
 
 'use strict';
 
+import {
+  X, _X, Y, _Y, Z, _Z, LABELS,
+  CIRCLE,
+  COLOR_X, COLOR_Y, COLOR_Z,
+} from './constants.js';
+
+const TWO_PI = Math.PI * 2;
+const _AXIS_COLORS = [COLOR_X, COLOR_Y, COLOR_Z];
+const _U = [1, 0, 0], _V = [0, 1, 0];          // the HUD plane's basis
+
 // =========================================================================
 // G1  Arrays — the one allocating call, growth, capacity
 // =========================================================================
@@ -144,4 +154,173 @@ function _line(x0, y0, z0, x1, y1, z1) {
 function _end(out) {
   out.count = _w.n < _w.cap ? _w.n : _w.cap;
   return _w.n;
+}
+
+/** A sampled circle (or arc of `sweep`) of radius r at c, spanned by u, v: n segments. */
+function _ring(cx, cy, cz, r, u, v, n, sweep) {
+  let px = 0, py = 0, pz = 0;
+  for (let i = 0; i <= n; i++) {
+    const t = (i / n) * sweep;
+    const ct = Math.cos(t) * r, st = Math.sin(t) * r;
+    const x = cx + ct*u[0] + st*v[0];
+    const y = cy + ct*u[1] + st*v[1];
+    const z = cz + ct*u[2] + st*v[2];
+    if (i > 0) _line(px, py, pz, x, y, z);
+    px = x; py = y; pz = z;
+  }
+}
+
+// =========================================================================
+// G3  Axes, grid, cross, bulls-eye, ring
+// =========================================================================
+
+/**
+ * A coordinate frame at the origin: six half-axes by bit and, with LABELS,
+ * the X (2 lines) · Y (4) · Z (3) glyphs at 1.04 · size, sized size / 40 ×
+ * size / 30. Semantic colour per axis and its glyph (COLOR_X / Y / Z), or
+ * opts.color when `semantic` is false.
+ *
+ * Count: 2 · axes + 18 · (LABELS ? 1 : 0), at most 30.
+ *
+ * @param {object} out  Arrays object.
+ * @param {{ size?:number, bits?:number, semantic?:boolean, color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function axesLines(out, opts) {
+  const o = opts || {};
+  const size = o.size ?? 100;
+  const bits = o.bits ?? (LABELS | X | Y | Z);
+  const semantic = o.semantic !== false;
+  const axis = (i) => _color(semantic ? _AXIS_COLORS[i] : o.color);
+  _begin(out);
+  if (bits & LABELS) {
+    const cw = size/40, ch = size/30, cs = 1.04*size;
+    axis(0);
+    _line(cs,  cw, -ch, cs, -cw,  ch);
+    _line(cs, -cw, -ch, cs,  cw,  ch);
+    axis(1);
+    _line( cw, cs,  ch,  0, cs,   0);
+    _line(  0, cs,   0, -cw, cs,  ch);
+    _line(-cw, cs,  ch,  0, cs,   0);
+    _line(  0, cs,   0,  0, cs, -ch);
+    axis(2);
+    _line(-cw, -ch, cs,  cw, -ch, cs);
+    _line( cw, -ch, cs, -cw,  ch, cs);
+    _line(-cw,  ch, cs,  cw,  ch, cs);
+  }
+  axis(0);
+  if (bits & X)  _line(0, 0, 0,  size, 0, 0);
+  if (bits & _X) _line(0, 0, 0, -size, 0, 0);
+  axis(1);
+  if (bits & Y)  _line(0, 0, 0, 0,  size, 0);
+  if (bits & _Y) _line(0, 0, 0, 0, -size, 0);
+  axis(2);
+  if (bits & Z)  _line(0, 0, 0, 0, 0,  size);
+  if (bits & _Z) _line(0, 0, 0, 0, 0, -size);
+  return _end(out);
+}
+
+/**
+ * A grid in the XY plane: subdivisions + 1 lines each way spanning ±size.
+ * Orientation is the caller's M (a ground plane is a rotation about X).
+ *
+ * Count: 4 · (subdivisions + 1).
+ *
+ * @param {object} out  Arrays object.
+ * @param {{ size?:number, subdivisions?:number, color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function gridLines(out, opts) {
+  const o = opts || {};
+  const size = o.size ?? 100;
+  const sub = Math.max(1, (o.subdivisions ?? 10) | 0);
+  _begin(out);
+  _color(o.color);
+  for (let i = 0; i <= sub; i++) {
+    const pos = size * (2*i/sub - 1);
+    _line(pos, -size, 0, pos, size, 0);
+    _line(-size, pos, 0, size, pos, 0);
+  }
+  return _end(out);
+}
+
+/**
+ * A crosshair in HUD space (z = 0, target pixels): two lines of `size`
+ * through (x, y). The bridge projects a model origin and converts a world
+ * size to pixels before this call.
+ *
+ * Count: 4.
+ *
+ * @param {object} out  Arrays object.
+ * @param {{ x?:number, y?:number, size?:number, color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function crossLines(out, opts) {
+  const o = opts || {};
+  const x = o.x ?? 0, y = o.y ?? 0, half = (o.size ?? 50) / 2;
+  _begin(out);
+  _color(o.color);
+  _line(x - half, y, 0, x + half, y, 0);
+  _line(x, y - half, 0, x, y + half, 0);
+  return _end(out);
+}
+
+/**
+ * A bulls-eye in HUD space (z = 0, target pixels): a sampled circle of
+ * radius size / 2 (`detail` segments) or the cornered square (8 lines),
+ * plus the central cross at 0.6 · half.
+ *
+ * Count: 2 · detail + 4 (CIRCLE) or 20 (SQUARE).
+ *
+ * @param {object} out  Arrays object.
+ * @param {{ x?:number, y?:number, size?:number, shape?:number, detail?:number, color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function bullsEyeLines(out, opts) {
+  const o = opts || {};
+  const x = o.x ?? 0, y = o.y ?? 0, half = (o.size ?? 50) / 2;
+  const shape = o.shape ?? CIRCLE;
+  const detail = Math.max(3, (o.detail ?? 50) | 0);
+  _begin(out);
+  _color(o.color);
+  if (shape === CIRCLE) {
+    _ring(x, y, 0, half, _U, _V, detail, TWO_PI);
+  } else {
+    const c = 0.6 * half;
+    _line(x-half, y-half+c, 0, x-half, y-half, 0);
+    _line(x-half, y-half, 0, x-half+c, y-half, 0);
+    _line(x+half-c, y-half, 0, x+half, y-half, 0);
+    _line(x+half, y-half, 0, x+half, y-half+c, 0);
+    _line(x+half, y+half-c, 0, x+half, y+half, 0);
+    _line(x+half, y+half, 0, x+half-c, y+half, 0);
+    _line(x-half+c, y+half, 0, x-half, y+half, 0);
+    _line(x-half, y+half, 0, x-half, y+half-c, 0);
+  }
+  const ch = 0.6 * half;
+  _line(x - ch, y, 0, x + ch, y, 0);
+  _line(x, y - ch, 0, x, y + ch, 0);
+  return _end(out);
+}
+
+/**
+ * A sampled circle of radius r at (cx, cy, cz) spanned by the orthonormal
+ * u, v — the shared primitive; a partial `sweep` gives an arc from u.
+ *
+ * Count: 2 · detail.
+ *
+ * @param {object} out  Arrays object.
+ * @param {number} cx,cy,cz  Centre.
+ * @param {number} r         Radius.
+ * @param {number[]} u,v     Orthonormal in-plane basis.
+ * @param {{ detail?:number, sweep?:number, color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function ringLines(out, cx, cy, cz, r, u, v, opts) {
+  const o = opts || {};
+  const detail = Math.max(1, (o.detail ?? 48) | 0);
+  const sweep = o.sweep ?? TWO_PI;
+  _begin(out);
+  _color(o.color);
+  _ring(cx, cy, cz, r, u, v, detail, sweep);
+  return _end(out);
 }

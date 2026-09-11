@@ -1200,6 +1200,38 @@ const gizmo = {
     createArrays: exact([[0], [4], [4, { color: true }], [2, { texcoord: true, labels: true }], [-3]]),
     growArrays:   exact([[A(2, { color: true }), 5], [A(3, { texcoord: true, labels: true }), 1]], { writes: [0] }),
     capacityOf:   exact([[A(0)], [A(7)], [A(7, { color: true })]]),
+    axesLines: f64([
+      [A(30, { color: true }), {}],                                              // default: X | Y | Z + glyphs = 6 + 18 = 24
+      [A(30), { size: 50, bits: tree.X | tree._X | tree.Y }],                   // three half-axes, no labels: 6
+      [A(30, { color: true }), { semantic: false, color: [0, 0, 1] }],          // one colour throughout
+      [A(4, { color: true }), {}],                                              // capacity: needs 24, writes 4
+      [A(30), { bits: tree.NONE }],                                             // nothing: 0
+      [A(30, { color: true }), { bits: tree.LABELS | tree._X | tree._Y | tree._Z }],
+    ], { writes: [0] }),
+    gridLines: f64([
+      [A(44), {}],                                                              // 4 · 11
+      [A(8), { size: 2, subdivisions: 1, color: [1, 0, 0] }],
+      [A(20, { color: true }), { size: 10, subdivisions: 4, color: [0, 1, 0, 0.5] }],
+      [A(4), { subdivisions: 0 }],                                              // clamps to 1: needs 8, writes 4
+    ], { writes: [0] }),
+    crossLines: f64([
+      [A(4), { x: 10, y: 20, size: 8 }],
+      [A(4, { color: true }), { color: [0, 1, 0, 0.5] }],
+      [A(2), {}],                                                               // capacity: needs 4, writes 2
+    ], { writes: [0] }),
+    bullsEyeLines: f64([
+      [A(104), { x: 5, y: 5, size: 20 }],                                       // 2 · 50 + 4
+      [A(20), { x: 5, y: 5, size: 10, shape: tree.SQUARE }],                    // 16 + 4
+      [A(12, { color: true }), { shape: tree.SQUARE, color: [1, 1, 0] }],       // capacity: needs 20, writes 12
+      [A(20), { detail: 8 }],                                                   // 2 · 8 + 4
+    ], { writes: [0] }),
+    ringLines: f64([
+      [A(96), 0, 0, 0, 2, [1, 0, 0], [0, 1, 0], {}],
+      [A(8), 1, 2, 3, 1, [0, 0, 1], [1, 0, 0], { detail: 4 }],
+      [A(16), 0, 0, 0, 1, [1, 0, 0], [0, 1, 0], { detail: 8, sweep: PI / 2 }],  // a quarter arc
+      [A(4, { color: true }), 0, 0, 0, 1, [1, 0, 0], [0, 1, 0], { detail: 2, color: [1, 0, 1] }],
+      [A(2), 0, 0, 0, 1, [1, 0, 0], [0, 1, 0], { detail: 3 }],                  // capacity: needs 6, writes 2
+    ], { writes: [0] }),
   },
 };
 
