@@ -66,13 +66,15 @@
  * A constraint is any object exposing: `kind` (integer discriminant),
  * `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and
  * optionally `scalar()` / `azEl(out2)` / `aim(ax,ay,az[, zx,zy,zz])` — the
- * basis re-aim seam the bridge's deferred `from` frame drives (§4.13).
- * The p5.tree handle controller drives
- * any conforming constraint (lifecycle, frame conversion, bind, hooks, pick);
- * a new kind — 6-DOF, or app-specific — implements this contract here
- * (portable, draw-free) plus a bridge-side locus/pick draw (`drawLocus` /
- * `pickProxy` on createHandle), rather than forking the controller. The
- * classes below are the reference implementation. See handle-design.md §9.
+ * basis re-aim seam the bridge's deferred `from` frame drives — and
+ * `proxy(ox,oy,oz, dx,dy,dz, radius)`, the analytic pick: the ray parameter
+ * at which a ray in the working space meets the grab proxy of `radius`
+ * working units, or Infinity (a kind without one gets a sphere at its
+ * POINT). The handle controller drives any conforming constraint
+ * (lifecycle, frame conversion, bind, hooks, pick); a new kind — 6-DOF, or
+ * app-specific — implements this contract here (portable, draw-free) plus a
+ * bridge-side locus draw, rather than forking the controller. The classes
+ * below are the reference implementation. See handle-design.md §9–§10.
  *
  * ── Conventions ────────────────────────────────────────────────────────────
  * Ray direction `d` is assumed unit (the bridge normalises). Plane / axis
@@ -695,6 +697,36 @@ export class Constraint {
       this._dialPoint();
     }
     return this;
+  }
+
+  /**
+   * The analytic pick proxy: the ray parameter t at which a ray in the
+   * working space meets the grab proxy, or Infinity. `radius` is the grab
+   * size in working-space units — a constant pixel size the caller converted
+   * through pixelRatio at the proxy's depth. SPHERE / PLANE / AXIS: a sphere
+   * of `radius` at the reported POINT. DIAL: the ring at the anchor with
+   * tube radius `radius` (rayHitRing), so a grab lands anywhere on the ring.
+   *
+   * @param {number} ox,oy,oz  Ray origin.
+   * @param {number} dx,dy,dz  Ray direction (unit).
+   * @param {number} radius    Grab radius, working units.
+   * @returns {number} The nearest t ≥ 0, or Infinity.
+   */
+  proxy(ox, oy, oz, dx, dy, dz, radius) {
+    const a = this.anchor;
+    if (this.kind === DIAL) {
+      return rayHitRing(ox,oy,oz, dx,dy,dz, a[0], a[1], a[2],
+                        this.u[0], this.u[1], this.u[2], this._radius, radius);
+    }
+    let px, py, pz;
+    if (this.kind === SPHERE) {
+      px = a[0] + this.dir[0]*this._radius;
+      py = a[1] + this.dir[1]*this._radius;
+      pz = a[2] + this.dir[2]*this._radius;
+    } else {
+      px = this.pt[0]; py = this.pt[1]; pz = this.pt[2];
+    }
+    return rayHitSphere(ox,oy,oz, dx,dy,dz, px,py,pz, radius);
   }
 }
 

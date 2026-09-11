@@ -859,6 +859,8 @@ const handle = {
       { call: '$set', args: ['radius', 'x'] }, { call: '$get', args: ['radius'] },       // non-number ignored
       { call: 'aim', args: [0, 1, 0] }, { call: '$get', args: ['dir'] },                  // no basis: no-op
       { call: '$get', args: ['pt'] },
+      { call: 'proxy', args: [1, -5, 10, 0, 0, -1, 0.5] },                                 // the sphere at the POINT (1, −5, 0): t = 9.5
+      { call: 'proxy', args: [1, 0, 10, 0, 0, -1, 0.5] },                                  // miss
     ] },
     { name: 'Constraint PLANE — point state, parallel ray keeps last, seed projects, aim re-projects', class: 'Constraint', args: [PLANE, { anchor: [0, 1, 0], normal: [0, 2, 0] }], steps: [
       { call: '$get', args: ['kind'] }, { call: '$get', args: ['n'] }, { call: '$get', args: ['pt'] }, { call: '$get', args: ['report'] },
@@ -870,6 +872,8 @@ const handle = {
       { call: 'aim', args: [0, 0, 0] }, { call: '$get', args: ['n'] },                   // zero-length: previous normal kept
       { call: 'aim', args: [0, 0, -3] }, { call: '$get', args: ['n'] }, { call: 'value', args: [Z3] },
       { call: 'scalar' },
+      { call: 'seed', args: [2, 0, 0] }, { call: 'proxy', args: [2, 0, 5, 0, 0, -1, 0.25] },   // the sphere at the point: t = 4.75
+      { call: 'proxy', args: [2, 1, 5, 0, 0, -1, 0.25] },                                     // miss
     ] },
     { name: 'Constraint AXIS — scalar t, extent clamp, parallel ray, seed, aim preserves t', class: 'Constraint', args: [AXIS, { axis: [0, 3, 0], extent: [-2, 4] }], steps: [
       { call: '$get', args: ['kind'] }, { call: '$get', args: ['u'] }, { call: '$get', args: ['min'] }, { call: '$get', args: ['max'] }, { call: 'scalar' },
@@ -883,6 +887,8 @@ const handle = {
       { call: 'aim', args: [2, 0, 0] }, { call: '$get', args: ['u'] }, { call: 'scalar' }, { call: 'value', args: [Z3] },   // t preserved, point recomputed
       { call: 'aim', args: [0, 0, 0] }, { call: '$get', args: ['u'] },
       { call: '$set', args: ['max', 1] }, { call: 'solve', args: [5, 3, 0, -1, 0, 0] }, { call: 'scalar' },
+      { call: 'proxy', args: [1, 0, 5, 0, 0, -1, 0.5] },                                   // the sphere at the clamped point (1, 0, 0): t = 4.5
+      { call: 'proxy', args: [3, 0, 5, 0, 0, -1, 0.5] },                                   // miss
     ] },
     { name: 'Constraint DIAL — winding θ, face-on and edge-on solves, seed nearest winding, aim rebuilds the basis', class: 'Constraint', args: [DIAL, { axis: [0, 0, 1], radius: 2, zero: [1, 0, 0] }], steps: [
       { call: '$get', args: ['kind'] }, { call: '$get', args: ['u'] }, { call: '$get', args: ['r0'] }, { call: '$get', args: ['r1'] },
@@ -901,6 +907,9 @@ const handle = {
       { call: 'aim', args: [0, 1, 0, 0, 0, 1] }, { call: '$get', args: ['r0'] }, { call: '$get', args: ['r1'] }, { call: 'value', args: [Z3] },   // explicit θ = 0 reference
       { call: 'aim', args: [0, 1, 0, 0, 5, 0] }, { call: '$get', args: ['r0'] },          // reference ∥ axis: re-derived
       { call: '$set', args: ['min', 0] }, { call: '$set', args: ['max', 1] }, { call: 'seed', args: [0, 0, 3] }, { call: 'scalar' },   // clamped
+      { call: 'proxy', args: [3, 5, 0, 0, -1, 0, 0.3] },                                   // the ring (R = 3 about +Y) face-on at a vertex: t = 4.7
+      { call: 'proxy', args: [0, 5, 0, 0, -1, 0, 0.3] },                                   // through the hole: miss
+      { call: 'proxy', args: [10, 0, 0, -1, 0, 0, 0.3] },                                  // edge-on: t = 6.7
     ] },
     { name: 'Constraint DIAL via createConstraint — derived reference, default extent', class: 'createConstraint', args: [DIAL, { radius: 1 }], steps: [
       { call: '$get', args: ['kind'] }, { call: '$get', args: ['u'] }, { call: '$get', args: ['r0'] }, { call: '$get', args: ['r1'] }, { call: '$get', args: ['pt'] },

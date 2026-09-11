@@ -193,7 +193,9 @@
         {"call": "$get", "args": ["radius"], "expect": 5},
         {"call": "aim", "args": [0, 1, 0]},
         {"call": "$get", "args": ["dir"], "expect": [0, -1, 0]},
-        {"call": "$get", "args": ["pt"], "expect": [1, 2, 0]}
+        {"call": "$get", "args": ["pt"], "expect": [1, 2, 0]},
+        {"call": "proxy", "args": [1, -5, 10, 0, 0, -1, 0.5], "expect": 9.5},
+        {"call": "proxy", "args": [1, 0, 10, 0, 0, -1, 0.5], "expect": {"$num": "Infinity"}}
       ]
     },
     {
@@ -223,7 +225,10 @@
         {"call": "aim", "args": [0, 0, -3]},
         {"call": "$get", "args": ["n"], "expect": [0, 0, -1]},
         {"call": "value", "args": [[0, 0, 0]], "expect": [0, 1, 0]},
-        {"call": "scalar", "expect": {"$num": "NaN"}}
+        {"call": "scalar", "expect": {"$num": "NaN"}},
+        {"call": "seed", "args": [2, 0, 0]},
+        {"call": "proxy", "args": [2, 0, 5, 0, 0, -1, 0.25], "expect": 4.75},
+        {"call": "proxy", "args": [2, 1, 5, 0, 0, -1, 0.25], "expect": {"$num": "Infinity"}}
       ]
     },
     {
@@ -265,7 +270,9 @@
         {"call": "$get", "args": ["u"], "expect": [1, 0, 0]},
         {"call": "$set", "args": ["max", 1]},
         {"call": "solve", "args": [5, 3, 0, -1, 0, 0]},
-        {"call": "scalar", "expect": 1}
+        {"call": "scalar", "expect": 1},
+        {"call": "proxy", "args": [1, 0, 5, 0, 0, -1, 0.5], "expect": 4.5},
+        {"call": "proxy", "args": [3, 0, 5, 0, 0, -1, 0.5], "expect": {"$num": "Infinity"}}
       ]
     },
     {
@@ -322,7 +329,10 @@
         {"call": "$set", "args": ["min", 0]},
         {"call": "$set", "args": ["max", 1]},
         {"call": "seed", "args": [0, 0, 3]},
-        {"call": "scalar", "expect": 1}
+        {"call": "scalar", "expect": 1},
+        {"call": "proxy", "args": [3, 5, 0, 0, -1, 0, 0.3], "expect": 4.7},
+        {"call": "proxy", "args": [0, 5, 0, 0, -1, 0, 0.3], "expect": {"$num": "Infinity"}},
+        {"call": "proxy", "args": [10, 0, 0, -1, 0, 0, 0.3], "expect": 6.699999999999994}
       ]
     },
     {
