@@ -1195,6 +1195,16 @@ const A = (cap, o = {}) => {
   return out;
 };
 
+const GZ24 = new Array(24).fill(0);
+const GI16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+// A camera 10 units up the z axis looking at the origin: a 90° lens over near 1, far 5,
+// and an orthographic one of half-height 3 — corners at whole numbers.
+const GCAM_P = { eye: [0, 0, 10], center: [0, 0, 0], up: [0, 1, 0], fov: PI / 2, halfHeight: null, near: 1, far: 5 };
+const GCAM_O = { eye: [0, 0, 10], center: [0, 0, 0], up: [0, 1, 0], fov: null, halfHeight: 3, near: 1, far: 5 };
+const GP_GL  = tree.mat4Persp(new Array(16).fill(0), -2, 2, -1, 1, 1, 5, -1);
+const GP_GPU = tree.mat4Persp(new Array(16).fill(0), -2, 2, -1, 1, 1, 5, 0);
+const GO_GL  = tree.mat4Ortho(new Array(16).fill(0), -3, 3, -3, 3, 1, 5, -1);
+
 const gizmo = {
   functions: {
     createArrays: exact([[0], [4], [4, { color: true }], [2, { texcoord: true, labels: true }], [-3]]),
@@ -1231,6 +1241,29 @@ const gizmo = {
       [A(16), 0, 0, 0, 1, [1, 0, 0], [0, 1, 0], { detail: 8, sweep: PI / 2 }],  // a quarter arc
       [A(4, { color: true }), 0, 0, 0, 1, [1, 0, 0], [0, 1, 0], { detail: 2, color: [1, 0, 1] }],
       [A(2), 0, 0, 0, 1, [1, 0, 0], [0, 1, 0], { detail: 3 }],                  // capacity: needs 6, writes 2
+    ], { writes: [0] }),
+    frustumCorners: f32([
+      [GZ24, GCAM_P, 2],                                                        // perspective state: near (±2, ±1, 9), far (±10, ±5, 5)
+      [GZ24, GCAM_O, 1],                                                        // orthographic state: (±3, ±3, 9) and (±3, ±3, 5)
+      [GZ24, GCAM_P],                                                           // aspect omitted: 1
+      [GZ24, { mat4Eye: GI16, mat4Proj: GP_GL, ndcZMin: -1 }, 1, -1],           // matrix form, WEBGL: the eye-space corners
+      [GZ24, { mat4Eye: GI16, mat4Proj: GP_GPU }, 1, 0],                        // matrix form, WEBGPU, the convention from the argument
+      [GZ24, { mat4Eye: GI16, mat4Proj: GO_GL, ndcZMin: -1 }],                  // orthographic matrix
+      [GZ24, { eye: [0, 0, 10], center: [0, 0, 0], up: [0, 1, 0], fov: null, halfHeight: null, near: 1, far: 5 }, 1],   // lens unset: null
+    ], { writes: [0] }),
+    frustumLines: f32([
+      [A(32), GCAM_P, { aspect: 2 }],                                           // all four bits: 32
+      [A(32), GCAM_O, {}],                                                      // orthographic: APEX ignored, 24
+      [A(8, { color: true }), GCAM_P, { aspect: 2, bits: tree.NEAR, color: [1, 0, 0] }],
+      [A(32), { mat4Eye: GI16, mat4Proj: GP_GL, ndcZMin: -1 }, {}],
+      [A(10), GCAM_P, { aspect: 2 }],                                           // capacity: needs 32, writes 10
+      [A(32), { eye: [0, 0, 10], center: [0, 0, 0], up: [0, 1, 0], fov: null, halfHeight: null, near: 1, far: 5 }, {}],   // lens unset: 0
+    ], { writes: [0] }),
+    hermiteLines: f64([
+      [A(64), [0, 0, 0], [3, 0, 0], [3, 3, 0], [0, 3, 0], {}],
+      [A(8), [0, 0, 0], [3, 0, 0], [3, 3, 0], [0, 3, 0], { samples: 4 }],
+      [A(4, { color: true }), [1, 2, 3], [0, 0, 1], [1, 2, 5], [0, 0, 1], { samples: 2, color: [0, 1, 1] }],
+      [A(2), [0, 0, 0], [3, 0, 0], [3, 3, 0], [0, 3, 0], { samples: 4 }],       // capacity: needs 8, writes 2
     ], { writes: [0] }),
   },
 };

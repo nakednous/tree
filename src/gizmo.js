@@ -51,13 +51,23 @@
 
 import {
   X, _X, Y, _Y, Z, _Z, LABELS,
-  CIRCLE,
+  NEAR, FAR, BODY, APEX,
+  CIRCLE, WEBGL,
   COLOR_X, COLOR_Y, COLOR_Z,
 } from './constants.js';
+import {
+  projIsOrtho, projNear, projFar, projLeft, projRight, projTop, projBottom, mat4MulPoint,
+} from './query.js';
+import { cameraEye } from './camera.js';
+import { hermiteVec3 } from './track.js';
 
 const TWO_PI = Math.PI * 2;
 const _AXIS_COLORS = [COLOR_X, COLOR_Y, COLOR_Z];
 const _U = [1, 0, 0], _V = [0, 1, 0];          // the HUD plane's basis
+const _E   = new Float64Array(16);             // a camera state's eye matrix
+const _p3  = [0, 0, 0];                        // a transformed corner / a sampled point
+const _q3  = [0, 0, 0];                        // the previous sampled point
+const _c24 = new Float64Array(24);             // frustum corners scratch
 
 // =========================================================================
 // G1  Arrays — the one allocating call, growth, capacity
@@ -322,5 +332,122 @@ export function ringLines(out, cx, cy, cz, r, u, v, opts) {
   _begin(out);
   _color(o.color);
   _ring(cx, cy, cz, r, u, v, detail, sweep);
+  return _end(out);
+}
+
+// =========================================================================
+// G4  Frustum and Hermite
+// =========================================================================
+
+const _isMat = (cam) => cam != null && cam.mat4Eye != null && cam.mat4Proj != null;
+
+/** Corner i of out24 ← E · (x, y, z). */
+function _corner(out24, i, E, x, y, z) {
+  mat4MulPoint(_p3, E, x, y, z);
+  out24[3*i] = _p3[0]; out24[3*i + 1] = _p3[1]; out24[3*i + 2] = _p3[2];
+}
+
+/**
+ * The eight world-space corners of a camera's frustum: the near face 0–3
+ * counter-clockwise from bottom-left (BL, BR, TR, TL), then the far face
+ * 4–7 in the same order — so corners 3, 2, 1, 0 are a pane's TL, TR, BR,
+ * BL. `cam` is a camera state (its symmetric extents from fov or
+ * halfHeight and `aspect`), or { mat4Eye, mat4Proj, ndcZMin? } for a
+ * matrix-captured camera (the extents read off the projection). The far
+ * extents follow by similar triangles, or equal the near ones under
+ * orthographic.
+ *
+ * @param {Float64Array|number[]} out24  24-element destination.
+ * @param {object} cam       Camera state, or { mat4Eye, mat4Proj, ndcZMin? }.
+ * @param {number} [aspect=1]  Viewport width / height (state form).
+ * @param {number} [ndcZMin=WEBGL]  NDC-z convention when the matrix form carries none.
+ * @returns {Float64Array|number[]|null} out24, or null when the state's lens is unset.
+ */
+export function frustumCorners(out24, cam, aspect, ndcZMin) {
+  let E, n, f, l, r, t, b, ortho;
+  if (_isMat(cam)) {
+    E = cam.mat4Eye;
+    const P = cam.mat4Proj, z = cam.ndcZMin ?? ndcZMin ?? WEBGL;
+    ortho = projIsOrtho(P);
+    n = projNear(P, z); f = projFar(P);
+    l = projLeft(P, z); r = projRight(P, z); t = projTop(P, z); b = projBottom(P, z);
+  } else {
+    ortho = cam.fov == null;
+    if (ortho && cam.halfHeight == null) return null;
+    n = cam.near; f = cam.far;
+    t = ortho ? cam.halfHeight : n * Math.tan(cam.fov / 2);
+    r = t * (aspect ?? 1);
+    b = -t; l = -r;
+    E = cameraEye(_E, cam);
+  }
+  const k = ortho ? 1 : f / n;
+  _corner(out24, 0, E,   l,   b, -n);
+  _corner(out24, 1, E,   r,   b, -n);
+  _corner(out24, 2, E,   r,   t, -n);
+  _corner(out24, 3, E,   l,   t, -n);
+  _corner(out24, 4, E, k*l, k*b, -f);
+  _corner(out24, 5, E, k*r, k*b, -f);
+  _corner(out24, 6, E, k*r, k*t, -f);
+  _corner(out24, 7, E, k*l, k*t, -f);
+  return out24;
+}
+
+/** Line between corners i and j of the scratch corners. */
+function _edge(i, j) {
+  _line(_c24[3*i], _c24[3*i + 1], _c24[3*i + 2], _c24[3*j], _c24[3*j + 1], _c24[3*j + 2]);
+}
+
+/**
+ * A camera's frustum as edges by bit: NEAR and FAR the two rectangles,
+ * BODY the four edges joining them, APEX (perspective only) the eye to
+ * the near corners. `cam` as frustumCorners takes it.
+ *
+ * Count: 8 · (NEAR + FAR + BODY + APEX), at most 32.
+ *
+ * @param {object} out  Arrays object.
+ * @param {object} cam  Camera state, or { mat4Eye, mat4Proj, ndcZMin? }.
+ * @param {{ aspect?:number, ndcZMin?:number, bits?:number, color?:number[] }} [opts]
+ * @returns {number} Vertices needed (0 when the state's lens is unset).
+ */
+export function frustumLines(out, cam, opts) {
+  const o = opts || {};
+  const bits = o.bits ?? (NEAR | FAR | BODY | APEX);
+  _begin(out);
+  _color(o.color);
+  if (frustumCorners(_c24, cam, o.aspect ?? 1, o.ndcZMin ?? WEBGL) === null) return _end(out);
+  if (bits & NEAR) { _edge(0, 1); _edge(1, 2); _edge(2, 3); _edge(3, 0); }
+  if (bits & FAR)  { _edge(4, 5); _edge(5, 6); _edge(6, 7); _edge(7, 4); }
+  if (bits & BODY) { _edge(0, 4); _edge(1, 5); _edge(2, 6); _edge(3, 7); }
+  const persp = _isMat(cam) ? !projIsOrtho(cam.mat4Proj) : cam.fov != null;
+  if ((bits & APEX) && persp) {
+    const E = _isMat(cam) ? cam.mat4Eye : null;
+    const ex = E ? E[12] : cam.eye[0], ey = E ? E[13] : cam.eye[1], ez = E ? E[14] : cam.eye[2];
+    for (let i = 0; i < 4; i++) _line(ex, ey, ez, _c24[3*i], _c24[3*i + 1], _c24[3*i + 2]);
+  }
+  return _end(out);
+}
+
+/**
+ * One cubic Hermite segment through hermiteVec3, as a polyline of
+ * `samples` steps.
+ *
+ * Count: 2 · samples.
+ *
+ * @param {object} out  Arrays object.
+ * @param {number[]} p0,t0  Start point and its outgoing tangent.
+ * @param {number[]} p1,t1  End point and its incoming tangent.
+ * @param {{ samples?:number, color?:number[] }} [opts]
+ * @returns {number} Vertices needed.
+ */
+export function hermiteLines(out, p0, t0, p1, t1, opts) {
+  const o = opts || {};
+  const N = Math.max(1, (o.samples ?? 32) | 0);
+  _begin(out);
+  _color(o.color);
+  for (let i = 0; i <= N; i++) {
+    hermiteVec3(_p3, p0, t0, p1, t1, i / N);
+    if (i > 0) _line(_q3[0], _q3[1], _q3[2], _p3[0], _p3[1], _p3[2]);
+    _q3[0] = _p3[0]; _q3[1] = _p3[1]; _q3[2] = _p3[2];
+  }
   return _end(out);
 }
