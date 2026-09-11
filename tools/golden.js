@@ -767,9 +767,53 @@ const track = {
 const { SPHERE, PLANE, AXIS, DIAL, POINT, DIRECTION } = tree;
 const Z2 = [0, 0];
 const R2 = Math.SQRT1_2;
+const C32 = Math.cos(PI / 32), S32 = Math.sin(PI / 32);          // the 32-chain's chord midpoint direction
+// A custom proxy — the helix of handle-examples/10 as a capsule chain: one link from θ to θ + π/16 on
+// p(θ) = (2cosθ, 2sinθ, θ/2π), tube 0.3, the ray aimed at the link's midpoint from outside, at three angles.
+const HELIX = [0, PI / 2, PI].map(th => {
+  const p = (t) => [2 * Math.cos(t), 2 * Math.sin(t), t / (2 * PI)];
+  const m = th + PI / 32;
+  return [5 * Math.cos(m), 5 * Math.sin(m), m / (2 * PI), -Math.cos(m), -Math.sin(m), 0, ...p(th), ...p(th + PI / 16), 0.3];
+});
 
 const handle = {
   functions: {
+    rayHitSphere: f64([
+      [0, 0, 5, 0, 0, -1, 0, 0, 0, 1],                          // direct: t = 4
+      [0, 1, 5, 0, 0, -1, 0, 0, 0, 1],                          // grazing: disc = 0
+      [0, 3, 5, 0, 0, -1, 0, 0, 0, 1],                          // miss
+      [0, 0, 0, 0, 0, -1, 0, 0, 0, 1],                          // origin inside: the exit
+      [0, 0, 5, 0, 0, 1, 0, 0, 0, 1],                           // pointing away: Infinity
+      [3, 0, 3, -R2, 0, -R2, 1, 0, 0, 2],                       // oblique, off-centre sphere
+      [1, 0, 0, 0, 0, -1, 1, 0, -10, 1],                        // ordering: the sphere at t = 9 (rayHitRing's last two cases)
+    ]),
+    rayHitCapsule: f64([
+      [2, 0, 5, 0, 0, -1, 0, 0, 0, 4, 0, 0, 1],                 // direct: the wall
+      [2, 1, 5, 0, 0, -1, 0, 0, 0, 4, 0, 0, 1],                 // grazing the wall
+      [2, 3, 5, 0, 0, -1, 0, 0, 0, 4, 0, 0, 1],                 // miss
+      [2, 0, 0, 0, 0, -1, 0, 0, 0, 4, 0, 0, 1],                 // origin inside: exits the wall
+      [0, 0, 0, -1, 0, 0, 0, 0, 0, 4, 0, 0, 1],                 // origin inside, along the axis: exits cap A
+      [-5, 0, 0, 1, 0, 0, 0, 0, 0, 4, 0, 0, 1],                 // along the axis: cap A
+      [9, 0.5, 0, -1, 0, 0, 0, 0, 0, 4, 0, 0, 1],               // cap B
+      [7, 2, 0, -R2, -R2, 0, 0, 0, 0, 4, 0, 0, 1],              // oblique onto cap B
+      [-0.5, 0.5, 5, 0, 0, -1, 0, 0, 0, 4, 0, 0, 1],            // wall hit beyond the extent: falls to cap A
+      [0, 0, 5, 0, 0, -1, 0, 0, 0, 0, 0, 0, 1],                 // zero-length segment: the sphere at A
+      ...HELIX,                                                 // a custom proxy: the helix link at θ = 0, π/2, π
+    ]),
+    rayHitRing: f64([
+      [10, 0, 5, 0, 0, -1, 0, 0, 0, 0, 0, 1, 10, 0.5],          // face-on onto a vertex
+      [0, 0, 5, 0, 0, -1, 0, 0, 0, 0, 0, 1, 10, 0.5],           // through the hole: miss
+      [10 * C32, 10 * S32, 5, 0, 0, -1, 0, 0, 0, 0, 0, 1, 10, 0.5],   // face-on at a chord midpoint, on the true circle
+      [10, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 1, 10, 0.5],          // origin inside the tube
+      [20, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1, 10, 0.5],          // edge-on onto a vertex
+      [20 * C32, 20 * S32, 0, -C32, -S32, 0, 0, 0, 0, 0, 0, 1, 10, 0.5],   // edge-on at the chordal bound
+      [20, 10.5, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1, 10, 0.5],       // edge-on grazing a vertex
+      [20, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 3, 10, 0.5],          // normal not unit
+      [20, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1, 10, 0.5, 4],       // detail 4: a vertex
+      [20 * R2, 20 * R2, 0, -R2, -R2, 0, 0, 0, 0, 0, 0, 1, 10, 0.5, 4],   // detail 4 at the chordal bound
+      [1, 0, 0, 0, 0, -1, 0, 0, -5, 0, 0, 1, 1, 0.2],           // ordering: the ring in front of the sphere
+      [1, 0, 0, 0, 0, -1, 0, 0, -15, 0, 0, 1, 1, 0.2],          // ordering: behind it
+    ]),
     raySphere: f64([
       [Z3, 0, 0, 5, 0, 0, -1, 0, 0, 0, 1],                     // hit from outside: near root
       [Z3, 0, 0, 0, 0, 0, -1, 0, 0, 0, 1],                     // origin inside: far root

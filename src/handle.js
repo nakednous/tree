@@ -219,6 +219,132 @@ export function rayClosestPointOnAxis(out, ox,oy,oz, dx,dy,dz, px,py,pz, ux,uy,u
 }
 
 // =========================================================================
+// H2b Ray-primitive hit tests (pure, no out: the nearest t, or Infinity)
+// =========================================================================
+//
+// Beside the solve primitives above, which always write a point, these are
+// TESTS: they write nothing and return the ray parameter of the nearest hit
+// with t ≥ 0, or Infinity on a miss. A ray whose origin lies inside the
+// primitive hits at its exit, so a press from inside a proxy still grabs.
+// The ray direction is assumed unit.
+
+/**
+ * Ray–sphere hit test.
+ * @param {number} ox,oy,oz  Ray origin.
+ * @param {number} dx,dy,dz  Ray direction (unit).
+ * @param {number} cx,cy,cz  Sphere centre.
+ * @param {number} r         Sphere radius.
+ * @returns {number} The nearest t ≥ 0, or Infinity.
+ */
+export function rayHitSphere(ox,oy,oz, dx,dy,dz, cx,cy,cz, r) {
+  const lx=ox-cx, ly=oy-cy, lz=oz-cz;
+  const b  = lx*dx + ly*dy + lz*dz;
+  const cc = lx*lx + ly*ly + lz*lz - r*r;
+  const disc = b*b - cc;
+  if (disc < 0) return Infinity;
+  const s = Math.sqrt(disc);
+  let t = -b - s;
+  if (t < 0) t = -b + s;                // origin inside: the exit
+  return t < 0 ? Infinity : t;          // both roots behind the origin
+}
+
+// One end cap of a capsule: the sphere at (cx,cy,cz), a root accepted only
+// where the hit's axial coordinate h = wu + t·du lies beyond the segment on
+// that cap's side (h ≤ 0 at A, h ≥ L at B), so the point is on the capsule's
+// surface and not inside its cylinder.
+function _capHit(ox,oy,oz, dx,dy,dz, cx,cy,cz, r, wu, du, lim, endB) {
+  const lx=ox-cx, ly=oy-cy, lz=oz-cz;
+  const b  = lx*dx + ly*dy + lz*dz;
+  const cc = lx*lx + ly*ly + lz*lz - r*r;
+  const disc = b*b - cc;
+  if (disc < 0) return Infinity;
+  const s = Math.sqrt(disc);
+  let t = -b - s, h = wu + t*du;
+  if (t < 0 || (endB ? h < lim : h > lim)) { t = -b + s; h = wu + t*du; }
+  return (t >= 0 && (endB ? h >= lim : h <= lim)) ? t : Infinity;
+}
+
+/**
+ * Ray–capsule hit test: the segment A→B swept by radius r. The cylinder wall
+ * counts within the segment's extent, each end sphere beyond it; the nearest
+ * of the three wins. A zero-length segment is the sphere at A.
+ * @param {number} ox,oy,oz  Ray origin.
+ * @param {number} dx,dy,dz  Ray direction (unit).
+ * @param {number} ax,ay,az  Segment start.
+ * @param {number} bx,by,bz  Segment end.
+ * @param {number} r         Capsule radius.
+ * @returns {number} The nearest t ≥ 0, or Infinity.
+ */
+export function rayHitCapsule(ox,oy,oz, dx,dy,dz, ax,ay,az, bx,by,bz, r) {
+  let ux=bx-ax, uy=by-ay, uz=bz-az;
+  const L = Math.sqrt(ux*ux + uy*uy + uz*uz);
+  if (L < EPS) return rayHitSphere(ox,oy,oz, dx,dy,dz, ax,ay,az, r);
+  ux/=L; uy/=L; uz/=L;
+  const wx=ox-ax, wy=oy-ay, wz=oz-az;
+  const du = dx*ux + dy*uy + dz*uz;     // d·u
+  const wu = wx*ux + wy*uy + wz*uz;     // w·u
+  let best = Infinity;
+  // Cylinder wall: the quadratic in the components perpendicular to u.
+  const a = 1 - du*du;
+  if (a > EPS) {
+    const b = (dx*wx + dy*wy + dz*wz) - du*wu;
+    const c = (wx*wx + wy*wy + wz*wz) - wu*wu - r*r;
+    const disc = b*b - a*c;
+    if (disc >= 0) {
+      const s = Math.sqrt(disc);
+      let t = (-b - s)/a, h = wu + t*du;
+      if (t < 0 || h < 0 || h > L) { t = (-b + s)/a; h = wu + t*du; }
+      if (t >= 0 && h >= 0 && h <= L) best = t;
+    }
+  }
+  const ta = _capHit(ox,oy,oz, dx,dy,dz, ax,ay,az, r, wu, du, 0, false);
+  if (ta < best) best = ta;
+  const tb = _capHit(ox,oy,oz, dx,dy,dz, bx,by,bz, r, wu, du, L, true);
+  if (tb < best) best = tb;
+  return best;
+}
+
+// Ring scratch — the plane normal and its in-plane basis. Function-local
+// working values, never state: rayHitRing runs to completion.
+const _rn = [0, 0, 1], _r0 = [1, 0, 0], _r1 = [0, 1, 0];
+
+/**
+ * Ray–ring hit test: the circle of radius R about c in the plane
+ * perpendicular to u, swept by tube radius r — the analytic torus proxy as a
+ * capsule chain, the circle polygonised into `detail` segments and each
+ * tested with rayHitCapsule. The chain has volume in every direction, so it
+ * never degenerates edge-on; the chordal error is R · (1 − cos(π / detail)).
+ * @param {number} ox,oy,oz  Ray origin.
+ * @param {number} dx,dy,dz  Ray direction (unit).
+ * @param {number} cx,cy,cz  Ring centre.
+ * @param {number} ux,uy,uz  Ring plane normal (normalised here).
+ * @param {number} R         Ring radius.
+ * @param {number} r         Tube radius.
+ * @param {number} [detail=32]  Chain segments (at least 3).
+ * @returns {number} The nearest t ≥ 0, or Infinity.
+ */
+export function rayHitRing(ox,oy,oz, dx,dy,dz, cx,cy,cz, ux,uy,uz, R, r, detail = 32) {
+  const n = _isNum(detail) && detail >= 3 ? Math.floor(detail) : 32;
+  _rn[0]=ux; _rn[1]=uy; _rn[2]=uz;
+  _unit(_rn, 0, 0, 1);
+  _basis(_rn, _r0, _r1);
+  const step = TWO_PI / n;
+  let best = Infinity;
+  let ax = cx + R*_r0[0], ay = cy + R*_r0[1], az = cz + R*_r0[2];   // vertex at angle 0
+  for (let i = 1; i <= n; i++) {
+    const th = i === n ? 0 : i*step;                                 // close the chain exactly
+    const cs = Math.cos(th)*R, sn = Math.sin(th)*R;
+    const bx = cx + cs*_r0[0] + sn*_r1[0];
+    const by = cy + cs*_r0[1] + sn*_r1[1];
+    const bz = cz + cs*_r0[2] + sn*_r1[2];
+    const t = rayHitCapsule(ox,oy,oz, dx,dy,dz, ax,ay,az, bx,by,bz, r);
+    if (t < best) best = t;
+    ax = bx; ay = by; az = bz;
+  }
+  return best;
+}
+
+// =========================================================================
 // H3  Angular utilities (readout / authoring convenience)
 // =========================================================================
 

@@ -524,6 +524,7 @@ Every function that needs the camera frame derives it through `mat4Eye`, so plan
 ```js
 import { createConstraint, SPHERE, PLANE, AXIS, DIAL, POINT, DIRECTION,
          raySphere, rayPlane, rayClosestPointOnAxis,
+         rayHitSphere, rayHitCapsule, rayHitRing,
          dirFromAzEl, azElFromDir } from '@nakednous/tree'
 
 const c = createConstraint(SPHERE, { radius: 1 })  // or PLANE / AXIS / DIAL
@@ -533,6 +534,8 @@ c.value(out, DIRECTION)       // write the reported value into out(3)
 ```
 
 `SPHERE` stores a unit direction (gimbal-free); `PLANE` / `AXIS` store a constrained point; `DIAL` stores an accumulated angle θ (multi-turn winding preserved). `value` reports a `DIRECTION` (unit) or a `POINT` per kind. `aim(ax,ay,az[, zx,zy,zz])` re-aims the constraint basis in the working space — `PLANE` takes a new normal (point re-projected), `AXIS` a new direction (`t` preserved), `DIAL` a new plane normal plus optional θ=0 reference (θ preserved) — the seam the `p5.tree` bridge's deferred `from` frame drives. Ray primitives are out-first and assume a unit ray direction; `rayPlane` returns `Infinity` when the ray is parallel.
+
+**Hit tests — the analytic pick.** Beside the solve primitives, which always write a point, three tests write nothing and return the ray parameter `t` of the nearest hit with `t ≥ 0`, or `Infinity`: `rayHitSphere(o, d, c, r)`, `rayHitCapsule(o, d, a, b, r)` (the segment `a→b` swept by `r`) and `rayHitRing(o, d, c, u, R, r, detail = 32)` (the circle of radius `R` about `c` in the plane ⊥ `u`, swept by tube radius `r`, as a capsule chain of `detail` links — chordal error `R · (1 − cos(π / detail))`, never degenerate edge-on). A ray starting inside hits at its exit, so a press from inside a proxy still grabs. These are what a host's controller picks with instead of a tagged render pass: unproject the pointer, convert the grab size to working units through `pixelRatio`, test every candidate, nearest `t` wins.
 
 **Constraint contract (extension seam).** A constraint is any object exposing `kind`, `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and optionally `scalar()` / `azEl(out2)` / `aim(ax,ay,az[, zx,zy,zz])`. The handle controller drives any conforming constraint, so a new kind — rotation, 6-DOF, or app-specific — implements this contract (portable, draw-free) plus a bridge-side locus draw, rather than forking the controller. The built-in `Constraint` is the reference implementation. Full design: [`handle-design.md`](./handle-design.md).
 
