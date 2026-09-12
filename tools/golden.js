@@ -515,6 +515,11 @@ const query = {
     mat4Location: f32([
       [M16, F, G], [M16, I16, F], [M16, F, I16],
       [M16, F, SING],                                                         // singular `to`: null
+      // two placed frames, A rotated about Y and B rotated off-axis and scaled: inv(B) · A, so
+      // B · out · origin lands on A's origin (the frame-A / frame-B figure)
+      [M16,
+        tree.mat4FromTRS(new Array(16).fill(0), 5, -2, 3, ...tree.qFromAxisAngle([0, 0, 0, 1], 0, 1, 0, 0.7), 1, 1, 1),
+        tree.mat4FromTRS(new Array(16).fill(0), 1, 2, 3, ...tree.qFromAxisAngle([0, 0, 0, 1], 0.3, 1, 0.2, 1.1), 2, 1, 0.5)],
     ]),
     mat3Direction: f32([
       [new Array(9).fill(0), F, G], [new Array(9).fill(0), I16, F], [new Array(9).fill(0), F, I16],

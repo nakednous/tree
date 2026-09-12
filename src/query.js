@@ -224,9 +224,10 @@ export function mat4MV(out, model, view) { return mat4Mul(out, view, model); }
  */
 export function mat4Location(out, from, to) {
   // Same as: return mat4Invert(out, to) && mat4Mul(out, out, from);
-  const a00=to[0],a01=to[1],a02=to[2],
-        a10=to[4],a11=to[5],a12=to[6],
-        a20=to[8],a21=to[9],a22=to[10];
+  // a_rc reads column-major: element (row r, column c) is to[c*4 + r].
+  const a00=to[0],a01=to[4],a02=to[8],
+        a10=to[1],a11=to[5],a12=to[9],
+        a20=to[2],a21=to[6],a22=to[10];
   const b01=a22*a11-a12*a21, b11=a12*a20-a22*a10, b21=a21*a10-a11*a20;
   let det=a00*b01+a01*b11+a02*b21;
   if (Math.abs(det) < 1e-12) return null;
