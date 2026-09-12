@@ -716,6 +716,7 @@ keeping separate lists, so this is the one place to look.
 | 32 | Reaching the host from a sketch | p5.tree, stage 10 (2026-09-12) | — | `p5.Tree.hostOf(p)` on the namespace, or a p5.tree `createOrbit` verb | **pending** — `treeHost()`, a sketch-level accessor, for the host constructs p5.tree has no verb for (`labels`, `orbit`); an orbit verb would compete with `orbitControl`, which stays |
 | 33 | Touch-action for the orbit | host §12 (2026-09-12) | — | the pointer source sets `touch-action: none` on every canvas | **pending** — the orbit sets `canvas.style.touchAction = 'none'` while it lives and restores it on dispose, the ORBIT_TOUCH_ISSUES workaround; handles on a phone still want the sketch's CSS |
 | 34 | `hid` reattach | host §9 (2026-09-12) | `connect()` from a gesture | — | **pending** — `resume()`, run at creation unless `resume: false`, attaches a device the origin already granted through `getDevices()` without a prompt, the e7 behaviour |
+| 35 | The orbit's vertical sense | host §12 (surfaced by the e13 phone run, 2026-09-12: the drag and the pan were inverted under p5) | screen-down is the eye's −up | an `ndcYSign` option on the orbit | **pending** — implemented by reading the sign off the view bag's `mat4Proj[5]` each update: negative (p5's y-flipped projection) reverses the elevation and the pan's vertical term, so a drag down brings the scene down under either projection and no option is needed |
 
-Thirty-four rows; sixteen ruled (September 2026), #16, #18–#26 and #28–#34 pending; the table
+Thirty-five rows; sixteen ruled (September 2026), #16, #18–#26 and #28–#35 pending; the table
 stays as the record. New rows are added here as implementation surfaces them.
