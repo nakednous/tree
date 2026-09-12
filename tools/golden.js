@@ -523,7 +523,12 @@ const query = {
     ]),
     mat3Direction: f32([
       [new Array(9).fill(0), F, G], [new Array(9).fill(0), I16, F], [new Array(9).fill(0), F, I16],
-      [new Array(9).fill(0), SING, F],                                        // singular `from`: null
+      [new Array(9).fill(0), F, SING],                                        // singular `to`: null
+      // the two placed frames of the mat4Location case: inv(B₃) · A₃, a direction's A-coordinates
+      // becoming its B-coordinates — drawn inside each frame the two lines are parallel
+      [new Array(9).fill(0),
+        tree.mat4FromTRS(new Array(16).fill(0), 5, -2, 3, ...tree.qFromAxisAngle([0, 0, 0, 1], 0, 1, 0, 0.7), 1, 1, 1),
+        tree.mat4FromTRS(new Array(16).fill(0), 1, 2, 3, ...tree.qFromAxisAngle([0, 0, 0, 1], 0.3, 1, 0.2, 1.1), 2, 1, 0.5)],
     ]),
     mapLocation: f32([
       loc(c, WORLD, SCREEN),                                                  // lookat centre → screen centre

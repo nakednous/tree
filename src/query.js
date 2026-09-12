@@ -247,14 +247,17 @@ export function mat4Location(out, from, to) {
 }
 
 /**
- * Direction transform between frames: out = to₃ · inv(from₃).
- * Uses only the upper-left 3×3 blocks (rotation/scale, no translation).
- * @returns {ArrayLike<number>|null} out, or null if `from` is singular.
+ * Direction transform between frames: out = inv(to₃) · from₃ — a direction's
+ * coordinates in `from` become its coordinates in `to`, the same conversion
+ * mat4Location and mapDirection perform, on the upper-left 3×3 blocks only
+ * (rotation / scale, no translation).
+ * @returns {ArrayLike<number>|null} out, or null if `to` is singular.
  */
 export function mat3Direction(out, from, to) {
-  const a00=from[0],a01=from[1],a02=from[2],
-        a10=from[4],a11=from[5],a12=from[6],
-        a20=from[8],a21=from[9],a22=from[10];
+  // a_rc reads column-major: element (row r, column c) is to[c*4 + r].
+  const a00=to[0],a01=to[4],a02=to[8],
+        a10=to[1],a11=to[5],a12=to[9],
+        a20=to[2],a21=to[6],a22=to[10];
   const b01=a22*a11-a12*a21, b11=a12*a20-a22*a10, b21=a21*a10-a11*a20;
   let det=a00*b01+a01*b11+a02*b21;
   if (Math.abs(det) < 1e-12) return null;
@@ -262,10 +265,13 @@ export function mat3Direction(out, from, to) {
   const i00=b01*det,             i01=(a02*a21-a22*a01)*det, i02=(a12*a01-a02*a11)*det;
   const i10=b11*det,             i11=(a22*a00-a02*a20)*det, i12=(a02*a10-a12*a00)*det;
   const i20=b21*det,             i21=(a01*a20-a21*a00)*det, i22=(a11*a00-a01*a10)*det;
-  const t00=to[0],t01=to[1],t02=to[2], t10=to[4],t11=to[5],t12=to[6], t20=to[8],t21=to[9],t22=to[10];
-  out[0]=t00*i00+t10*i01+t20*i02; out[1]=t01*i00+t11*i01+t21*i02; out[2]=t02*i00+t12*i01+t22*i02;
-  out[3]=t00*i10+t10*i11+t20*i12; out[4]=t01*i10+t11*i11+t21*i12; out[5]=t02*i10+t12*i11+t22*i12;
-  out[6]=t00*i20+t10*i21+t20*i22; out[7]=t01*i20+t11*i21+t21*i22; out[8]=t02*i20+t12*i21+t22*i22;
+  // out = inv(to₃) · from₃, column by column of from.
+  for (let c = 0; c < 3; c++) {
+    const f0=from[c*4], f1=from[c*4+1], f2=from[c*4+2];
+    out[c*3]   = i00*f0 + i01*f1 + i02*f2;
+    out[c*3+1] = i10*f0 + i11*f1 + i12*f2;
+    out[c*3+2] = i20*f0 + i21*f1 + i22*f2;
+  }
   return out;
 }
 
