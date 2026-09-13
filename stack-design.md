@@ -212,8 +212,8 @@ twgl, with state per context held in a registry keyed by `gl`.
 | `⁻ᵀ` | tree | `mat3NormalFromMat4` |
 | `·` | tree | `mat4Mul` · `mat4MulPoint` · `mat4MulDir` · `qMul` |
 | `/` | tree | the divide inside `mat4MulPoint` and `mapLocation` |
-| `→` (`WORLD → EYE`, …) | tree | the `from` / `to` arguments of `mapLocation` · `mapDirection` |
-| `viewport(·)` | tree | `mapLocation(…, WORLD, SCREEN, m, vp, ndcZMin)` |
+| `→` (`WORLD → EYE`, …) | — | prose in a comment above the math it names (`// WORLD → SCREEN`); `mapLocation` · `mapDirection` stay in tree as the host's and bridges' machinery, off the teaching surface |
+| `W` · `viewport(·)` | tree | `mat4Viewport(vp, ndcZMin)` — the S · T that seats NDC in the viewport; world → screen is `(W · P · V · p) / w` through `mat4MulPoint`, screen → world the same with `(W · P · V)⁻¹` |
 | `unproject(·)` | tree | `unproject(outOrigin, outDir, sx, sy, m, vp, ndcZMin)` — new, one call; the point-at-depth form stays `mapLocation(SCREEN → WORLD)` |
 | `\|v\|` · `v̂` · `normalize(·)` | — | inline arithmetic; `qNormalize` for a quaternion. Not a core call |
 | `cursor()` | tree | `track.seg` · `track.f` (`track.info()`) |
@@ -233,7 +233,7 @@ twgl, with state per context held in a registry keyed by `gl`.
 | `clear()` | twgl | `gl.clear` — not re-wrapped |
 | `cullFace(FRONT)` | twgl | `gl.cullFace` — render state stays raw |
 | `setCamera(V, P)` · `setCamera(cam)` | twgl.tree | `setCamera(V, P)` · `setCamera(cam)` — installs the transform state `draw` reads |
-| `renderTarget()` · `(width, height)` · `(depth)` · `(color: [a, b])` | twgl.tree | `renderTarget(opts)` over `twgl.createFramebufferInfo` — resolves the four shapes, `drawBuffers` for the multi-target one, `fbo.depth` · `fbo.a` as named attachments |
+| `renderTarget()` · `(width, height)` · `(depth)` · `(color: [a, b])` | twgl.tree | `renderTarget(opts)` over `twgl.createFramebufferInfo` — resolves the four shapes, `drawBuffers` for the multi-target one, `fbo.depth` · `fbo.a` as named attachments; sampling options with today's defaults (linear, clamp) and a multisampled form resolved into its textures |
 | `beginPass(target)` · `screen` | twgl | `twgl.bindFramebufferInfo(gl, fbo)` · `bindFramebufferInfo(gl, null)` — not re-wrapped; a `SCREEN` constant names `null` |
 | `filter(prog)` · `filter(prog, { … })` | twgl.tree | `filter(prog, uniforms)` — `bind` + `draw(fullscreen)`; the input arrives as `tex0` |
 | `fullscreen` | twgl.tree | `fullscreen()` — the cached covering quad |
@@ -285,6 +285,20 @@ restructuring; carried here until the freeze, then closed.
   realized by `twgl.tree` in the heroes, spelled out in the columns — keeps the two tables
   consistent without adding a column.
 - **`E.col(i)` is index arithmetic.** No layer mints a call for it; the table can say so.
+- **The pseudo-code is math and uniform definitions.** A space change is written as the
+  product it is — `V · p`, `R(V) · d`, `M_B⁻¹ · M_A · p` — with the named spaces kept as a
+  comment above it (`// WORLD → EYE`); the arrow is prose, never a call. The viewport step
+  is the matrix `W` the pipeline chapter already derives row by row, so world → screen is
+  one composition, `(W · P · V · p) / w`, and screen → world its inverse — compose and
+  inverse, the foundations story, with nothing new.
+- **Every shader input is a `u*` name.** The filtered image arrives as `uSource` (name
+  pending, §7 #45), not p5's `tex0`; `uTexelSize` · `uResolution` already follow the rule.
+  The p5 realization reaches p5's filter names through a `#define` the ground inserts after
+  `#version`, so no listing ever shows `tex0`.
+- **Uniforms are definitions `bind` reads by name.** `uWorldLightMatrix = B · P_light ·
+  V_light` defines a value; `bind(prog, { uWorldLightMatrix, … })` consumes it. One bag of
+  such definitions — the one a `[panel: …]` already writes into — may be handed to every
+  program a hero binds, each program reading the names it declares (§7 #46).
 
 ### 2.4 Golden vectors — the port contract
 
@@ -725,6 +739,13 @@ keeping separate lists, so this is the one place to look.
 | 40 | Loading models | §1.4, host media (2026-09-13) | glTF through `@gltf-transform/core` behind a bridge adapter, later; OBJ assets converted to glTF once | — | **host `loadModel` over `webgl-obj-loader`** (Pierre, 2026-09-13) — an adapter only: fetch, `new OBJ.Mesh(text)`, the mesh copied into the arrays shape `{ position, normal?, texcoord?, indices }` with no `count` or `labels`, so `createBufferInfoFromArrays` takes it as it is; no parser in the stack; glTF follows through a parser package of its own |
 | 41 | Packaging the OBJ parser | host (2026-09-13) | — | a runtime dependency, external in the ES build | **pending** — a devDependency bundled into host's dist through `@rollup/plugin-commonjs` (the package ships a webpack UMD only), so host's runtime dependencies stay tree alone and no import map gains an entry |
 | 42 | The depth test as a framework silence | twgl.tree harness, the toon and shadow heroes (2026-09-13) | the notation never writes a depth test; `clear()` and `beginPass` stay raw (§2.2), so a twgl.tree hero enables `gl.DEPTH_TEST` itself | `init(gl)` enables the depth test once, as p5 does silently, by §2.1's framework line | **pending** — each hero enables it once after `init`; `gizmo`, `image` and `filter` already switch it per call and restore it |
+| 43 | The viewport as a matrix | §2.2, pipeline chapter (2026-09-13) | `viewport(·)` realized by `mapLocation(…, WORLD, SCREEN, …)` | a `viewport(out, ndc, vp)` point function | **`mat4Viewport(out, vp, ndcZMin)`** (Pierre, 2026-09-13) — the S · T of the pipeline chapter's viewport rows, signed `vp` for y-down, `ndcZMin` for the depth row; world → screen composes it, screen → world inverts the composition; a core export with its golden case |
+| 44 | Named spaces off the teaching surface | §2.2 (2026-09-13) | the `→` row realized by `mapLocation` · `mapDirection` | the arrow as a notation symbol | **math with the spaces as comments** (Pierre, 2026-09-13) — pseudo-code and examples write the product (`V · p`, `M_B⁻¹ · M_A · p`) under a `// FROM → TO` comment; `mapLocation` · `mapDirection` stay exported for host, the bridges and debugging, but leave the notation, the twgl.tree examples and, when p5.tree next revises its docs, its rendered reference |
+| 45 | The filtered image's uniform name | §2.3, the heroes (2026-09-13: 17 notebook files read `tex0`, 14 already `uTexelSize` / `uResolution`) | `tex0`, p5's filter convention | keep both conventions in the book | **`u*` in the book, a hidden door for p5** (Pierre, 2026-09-13) — shaders say the `u*` name; the p5 ground inserts `#define <name> tex0` (and `uTexelSize` → `texelSize`, `uResolution` → `canvasSize` where a hero needs them) after `#version`; twgl.tree's `filter` and `pipe` fill the `u*` name, and `tex0` beside it while heroes migrate. **The name is pending** — `uSource` recommended (it matches `pipe`'s `source` argument in both bridges); `uSrc`, `uInput`, `uImage` considered; `uTexture` is taken by twgl.tree's internal flat program |
+| 46 | A uniforms bag | §2.3 (2026-09-13) | per-bind object literals of bare names | one bag of definitions handed to every `bind` | **pending** — the bag, since `twgl.setUniforms` ignores names a program does not declare and the `[panel: …]` target already is one; the code stays imperative, one tree or twgl call per definition into preallocated values — no reactive layer |
+| 47 | What stays on p5 | the notebook (2026-09-13) | every hero ports to the stack | — | **figure-only sketches stay on p5** (Pierre, 2026-09-13) unless porting one sharpens the design; the notebook keeps a `p5` branch as the backup of every sketch on p5 and `tex0`, created from `main` before the migration |
+| 48 | Sampling a render target | twgl.tree `target.js` (2026-09-13) | attachments fixed at linear filtering, clamp to edge | — | **options with today's defaults** (Pierre, 2026-09-13) — `renderTarget(gl, { minMag, wrap })`, defaulting to linear and clamp so every current hero reads the same |
+| 49 | Multisampled render targets | twgl.tree `target.js` (2026-09-13: p5's `createFramebuffer` antialiases by default, twgl.tree's targets do not) | single-sampled targets | — | **included** (Pierre, 2026-09-13) — a multisampled form (`{ samples }`) rendering into renderbuffers and resolved into the target's textures by a blit; the default sample count is **pending**; line quality stays deferred with §7 #2 |
 
 Thirty-six rows; sixteen ruled (September 2026), #16, #18–#26 and #28–#35 pending, #36 deferred;
 the table stays as the record. New rows are added here as implementation surfaces them.
