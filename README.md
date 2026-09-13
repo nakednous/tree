@@ -700,11 +700,11 @@ The fixture format is specified in `tools/golden.js`. A function without a fixtu
 
 ---
 
-## Relationship to `p5.tree`
+## Relationship to the bridges
 
-[p5.tree](https://github.com/VisualComputing/p5.tree) is the bridge layer. It reads live renderer state (camera matrices, viewport dimensions, NDC convention) and passes it to `@nakednous/tree` functions. It wires `PoseTrack` and `CameraTrack` to the p5 draw loop, exposes `createPoseTrack` / `createCameraTrack` / `getCamera`, and provides `createPanel` for transport and parameter UIs.
+The bridges are where rendering lives. [p5.tree](https://github.com/VisualComputing/p5.tree) reads live p5 renderer state (camera matrices, viewport, NDC convention) into the host's view bag and draws the gizmo arrays with p5's own strokes; `twgl.tree` installs the camera, uploads the declared transforms and draws the same arrays through a line pipe on raw WebGL2; `webgpu.tree` realizes the same surface on WebGPU. Between them sits [`@nakednous/host`](https://github.com/nakednous/host): the pointer, the players, the handles, helms and tracks, the device streams, labels and the orbit — DOM transport, no renderer — which every bridge drives and which computes only through this package.
 
-`@nakednous/tree` provides the algorithms. The bridge provides the wiring.
+`@nakednous/tree` provides the algorithms, `@nakednous/host` the transport, `@nakednous/ui` the panels. The bridges provide the drawing.
 
 ---
 
