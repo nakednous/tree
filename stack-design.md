@@ -649,10 +649,11 @@ validated in Chromium. An item stays open until its experiment is named *done* h
 - **Multi-target on twgl.** `createFramebufferInfo` with several colour attachments plus
   `drawBuffers`, sampled by name (`fbo.a`). *Experiment:* the deferred hero's g-buffer on
   `renderTarget(color: […])`.
-- **Line pipe quality.** Single-pixel GL lines are what twgl gives; is that enough for the
-  gizmos, or does the frustum / path want a quad-strip line with width? *Experiment:* the
-  `trackPath` and `viewFrustum` gizmos beside their p5 renderings. Decides whether the pipe
-  grows a width option — in the bridge, never in the generators.
+- **Line pipe quality.** Single-pixel GL lines are what twgl gives; the frustum and the path
+  beside their p5 renderings read markedly thinner and rougher (2026-09-13), so the pipe grew
+  a `width` option — a screen-space quad per segment, in the bridge, never in the generators —
+  ruled experimental (§7 #2): the W toggle in the gizmo harness compares the two, and the read
+  decides whether width stays or the pipe reverts to raw lines over multisampled targets.
 
 ### 6.4 Notation
 
@@ -683,7 +684,7 @@ keeping separate lists, so this is the one place to look.
 | # | decision | where | as written | alternative | ruling |
 |---|---|---|---|---|---|
 | 1 | Golden-vector coverage rule | §2.4 | a function without a fixture is not exported | fixtures required for new additions only; existing surface back-filled over time | **as written** — the whole surface, so `tree-rs` can start at step 1 |
-| 2 | Line-pipe width | §6.3 | a gate: decide after `trackPath` / `viewFrustum` render beside p5 | decide now: raw 1-px GL lines, no width option | **gate** — `strokeWeight(3)` figures make the experiment necessary |
+| 2 | Line-pipe width | §6.3 | a gate: decide after `trackPath` / `viewFrustum` render beside p5 | decide now: raw 1-px GL lines, no width option | **width mode, experimental** (Pierre, 2026-09-13, from the gizmo harness: raw lines read markedly worse than p5's shader-expanded strokes, and the `strokeWeight(3)` figures need a width) — the pipe's `width` option in pixels expands each segment into a screen-space quad through a second internal program, the generators untouched; raw `gl.LINES` stay the default; flagged experimental because the next harness read may send it the other way, to raw lines with multisampled targets |
 | 3 | `p5.tree` adopts `host` | §5.2 | adopt, in a later minor after the docs pipeline ships | keep `p5.tree`'s own controller / router / players and accept the duplication | **adopt, on the current `0.1.0` branch** (provisional — "for now") |
 | 4 | Host entry point | host §3 | one context per canvas, `createHost(canvas, opts)`, constructs as factories on it | free factories, each taking pointer + view + players | **context** — three shared dependencies per construct; modules stay separable for the p5 adapter |
 | 5 | `value(out, opts)` in host | host §6 | `out` mandatory; the allocating form is the p5 adapter's | `out` optional, allocating a fresh `[0, 0, 0]` when omitted | **mandatory** — the tree contract |
