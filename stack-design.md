@@ -291,8 +291,8 @@ restructuring; carried here until the freeze, then closed.
   is the matrix `W` the pipeline chapter already derives row by row, so world → screen is
   one composition, `(W · P · V · p) / w`, and screen → world its inverse — compose and
   inverse, the foundations story, with nothing new.
-- **Every shader input is a `u*` name.** The filtered image arrives as `uSource` (name
-  pending, §7 #45), not p5's `tex0`; `uTexelSize` · `uResolution` already follow the rule.
+- **Every shader input is a `u*` name.** The filtered image arrives as `uSource` (§7 #45),
+  not p5's `tex0`; `uTexelSize` · `uResolution` already follow the rule.
   The p5 realization reaches p5's filter names through a `#define` the ground inserts after
   `#version`, so no listing ever shows `tex0`.
 - **Uniforms are definitions `bind` reads by name.** `uWorldLightMatrix = B · P_light ·
@@ -420,6 +420,11 @@ The DOM without a renderer. Depends on tree only. Modules:
 Doc: `host-design.md`.
 
 ### 3.4 `twgl.tree`
+
+**Rationale.** `twgl.tree` is an experimental implementation of the notebook's pseudo-code
+design on WebGL2, expected to rest on the foundations: `tree`'s math, twgl's calls, and only
+what a framework supplies silently in between. A hero that ports line for line confirms a
+piece of the notation; a hero that cannot is where the notation changes, not the bridge.
 
 The render host's ceremony over twgl. Depends on tree and host; `twgl.js` is a peer. Every
 call takes `gl` first; per-context state (installed camera, current target, cached quad,
@@ -741,7 +746,7 @@ keeping separate lists, so this is the one place to look.
 | 42 | The depth test as a framework silence | twgl.tree harness, the toon and shadow heroes (2026-09-13) | the notation never writes a depth test; `clear()` and `beginPass` stay raw (§2.2), so a twgl.tree hero enables `gl.DEPTH_TEST` itself | `init(gl)` enables the depth test once, as p5 does silently, by §2.1's framework line | **pending** — each hero enables it once after `init`; `gizmo`, `image` and `filter` already switch it per call and restore it |
 | 43 | The viewport as a matrix | §2.2, pipeline chapter (2026-09-13) | `viewport(·)` realized by `mapLocation(…, WORLD, SCREEN, …)` | a `viewport(out, ndc, vp)` point function | **`mat4Viewport(out, vp, ndcZMin)`** (Pierre, 2026-09-13) — the S · T of the pipeline chapter's viewport rows, signed `vp` for y-down, `ndcZMin` for the depth row; world → screen composes it, screen → world inverts the composition; a core export with its golden case |
 | 44 | Named spaces off the teaching surface | §2.2 (2026-09-13) | the `→` row realized by `mapLocation` · `mapDirection` | the arrow as a notation symbol | **math with the spaces as comments** (Pierre, 2026-09-13) — pseudo-code and examples write the product (`V · p`, `M_B⁻¹ · M_A · p`) under a `// FROM → TO` comment; `mapLocation` · `mapDirection` stay exported for host, the bridges and debugging, but leave the notation, the twgl.tree examples and, when p5.tree next revises its docs, its rendered reference |
-| 45 | The filtered image's uniform name | §2.3, the heroes (2026-09-13: 17 notebook files read `tex0`, 14 already `uTexelSize` / `uResolution`) | `tex0`, p5's filter convention | keep both conventions in the book | **`u*` in the book, a hidden door for p5** (Pierre, 2026-09-13) — shaders say the `u*` name; the p5 ground inserts `#define <name> tex0` (and `uTexelSize` → `texelSize`, `uResolution` → `canvasSize` where a hero needs them) after `#version`; twgl.tree's `filter` and `pipe` fill the `u*` name, and `tex0` beside it while heroes migrate. **The name is pending** — `uSource` recommended (it matches `pipe`'s `source` argument in both bridges); `uSrc`, `uInput`, `uImage` considered; `uTexture` is taken by twgl.tree's internal flat program |
+| 45 | The filtered image's uniform name | §2.3, the heroes (2026-09-13: 17 notebook files read `tex0`, 14 already `uTexelSize` / `uResolution`) | `tex0`, p5's filter convention | keep both conventions in the book | **`u*` in the book, a hidden door for p5** (Pierre, 2026-09-13) — shaders say the `u*` name; the p5 ground inserts `#define <name> tex0` (and `uTexelSize` → `texelSize`, `uResolution` → `canvasSize` where a hero needs them) after `#version`; twgl.tree's `filter` and `pipe` fill the `u*` name, and `tex0` beside it while heroes migrate. the name is **`uSource`** (Pierre, 2026-09-13), matching `pipe`'s `source` argument in both bridges |
 | 46 | A uniforms bag | §2.3 (2026-09-13) | per-bind object literals of bare names | one bag of definitions handed to every `bind` | **pending** — the bag, since `twgl.setUniforms` ignores names a program does not declare and the `[panel: …]` target already is one; the code stays imperative, one tree or twgl call per definition into preallocated values — no reactive layer |
 | 47 | What stays on p5 | the notebook (2026-09-13) | every hero ports to the stack | — | **figure-only sketches stay on p5** (Pierre, 2026-09-13) unless porting one sharpens the design; the notebook keeps a `p5` branch as the backup of every sketch on p5 and `tex0`, created from `main` before the migration |
 | 48 | Sampling a render target | twgl.tree `target.js` (2026-09-13) | attachments fixed at linear filtering, clamp to edge | — | **options with today's defaults** (Pierre, 2026-09-13) — `renderTarget(gl, { minMag, wrap })`, defaulting to linear and clamp so every current hero reads the same |
