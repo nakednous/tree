@@ -127,8 +127,9 @@ figures render in parity. It is named here so its brief is a port of a spec, not
   pick analytically in the core, synchronously, inside the frame.
 - **No geometry package.** Standard primitives come from `twgl.primitives` in the bridge;
   gizmo line geometry is core; platonic solids extend twgl upstream or live in a sketch.
-- **glTF** loads through `@gltf-transform/core` behind an owned adapter — bridge scope, later,
-  and not specified here.
+- **Models** load in host: `loadModel(url)` fetches an OBJ file and adapts `webgl-obj-loader`'s
+  mesh into the arrays shape, no parser maintained in the stack; glTF follows through a parser
+  package of its own, later.
 - **The manipulator trio stays three mechanisms.** Handle (position control, `vec3`), Track
   (keyframes, pose), Helm (rate control, pose). The composite TRS gizmo is user space: N
   handles under one router.
@@ -238,7 +239,7 @@ twgl, with state per context held in a registry keyed by `gl`.
 | `fullscreen` | twgl.tree | `fullscreen()` — the cached covering quad |
 | `image(buf)` · `image(buf, mask = RED)` | twgl.tree | `image(tex, { rect, mask, tint, blend })` |
 | `readPixel(fbo)` | twgl.tree | `readPixel(fbo, x, y) → Promise` (PBO + fence); `pick(x, y, drawFn) → Promise<id>` on top, via `mat4Pick` |
-| `load(file)` | host · twgl.tree | image: host decodes to `ImageBitmap`, `twgl.createTexture` uploads; model: the glTF adapter, later |
+| `load(file)` | host · twgl.tree | image: host decodes to `ImageBitmap`, `twgl.createTexture` uploads; model: host `loadModel` returns the arrays shape, `twgl.createBufferInfoFromArrays` uploads |
 | `upload(frame)` | host · twgl.tree | host supplies the video / camera element; `upload(tex, source)` over `twgl.setTextureFromElement` |
 | `width` · `height` | host | the canvas observer; also the signed viewport `vp` every core call takes |
 
@@ -420,8 +421,7 @@ supplied programs, pick resources) lives in a registry keyed by `gl`. Modules:
   and `uResolution` · `uTexelSize` on the notebook's conventions.
 - **`pick.js`** — `readPixel(fbo, x, y) → Promise` over a PBO and a fence sync polled per
   frame; `pick(x, y, drawFn) → Promise<id>` over a 1×1 target and `mat4Pick`.
-- **`texture.js`** — `upload(tex, source)` for bitmaps, video and elements; cubemaps; the
-  glTF adapter's `load`, later.
+- **`texture.js`** — `upload(tex, source)` for bitmaps, video and elements; cubemaps.
 - **`gizmo.js`** — the line pipe over core arrays (position + optional colour, a uniform
   colour otherwise), `beginHUD` · `endHUD`, textured panes; the gizmo calls `axes`, `grid`,
   `cross`, `bullsEye`, `viewFrustum`, `trackPath`, `helmRig`, `handle.draw` as thin
@@ -470,7 +470,7 @@ notebook's, not the stack's.
 |---|---|---|
 | **WEBGL text** — `mathLabel`, `drawMat4`, `drawPills`, billboard tags, `identify` | every affine / projection / barys figurine; pipeline; most HUDs | host `labels.js` over the view bag; anchors from `gizmo.js`'s `out.labels`; glyph strips from `media.raster`. Real shaping, so the combining-mark and ⊥ gotchas disappear. (`axes` labels are line glyphs and need none of this) |
 | **built-in material + primitives** — `lights()`, `specularMaterial`, `box` / `sphere` / `cone` / `torus` / `plane`, `model(buildGeometry(…))` | nearly every scene | `twgl.primitives` for the nouns; a notebook-side Phong helper on the local-lighting archetype's shader for lit props (`twoLight()` becomes its uniform values) — the bridge ships no public program; a subdivided quad is a twgl primitive, not a `buildGeometry` |
-| **OBJ models** — `loadModel` (bunny, budha, …) | masking, procedural, lod | notebook-side: assets converted to glTF once; `texture.load` through the adapter, later. The teapot is analytic already (`teapot.js`) and ports as arrays |
+| **OBJ models** — `loadModel` (bunny, budha, …) | masking, procedural, lod | host `loadModel(url)` over `webgl-obj-loader` → the arrays shape → `twgl.createBufferInfoFromArrays`. The teapot is analytic already (`teapot.js`) and ports as arrays |
 | **media** — `loadImage`, `createCapture`, `createVideo`, cubemap sets | imaging, skybox / envmap, webcam, marker, landmark | host `media.js` (decode, video / camera source) → bridge `texture.upload`; cubemaps in `texture.js` |
 | **`orbitControl`** | almost every 3D figure | host `orbit.js`, on pointer events — one-finger rotate, two-finger dolly / pan with the y sign right (the iOS issues fixed at construction) |
 | **framebuffers with a depth attachment; multiple render targets** | dof; deferred (raw WebGL2 today) | bridge `target.js` — `renderTarget(depth)` · `renderTarget(color: […])` from the first commit. Closes the MRT gap the notebook flags |
@@ -667,8 +667,8 @@ validated in Chromium. An item stays open until its experiment is named *done* h
 
 - WebXR sessions (§1.5): the raf hook and the XR framebuffer bind are seams in the package
   docs; no experiment until a real-device hero exists.
-- The glTF adapter (§1.4): bridge scope, its own doc when a hero needs a loaded model on
-  the stack.
+- glTF models (§1.4): a host loader over a parser package, beside `loadModel`, when a hero
+  needs one.
 - The Rust twin (§3.7): its gate is parity, owned by its own repos.
 
 ---
@@ -722,6 +722,8 @@ keeping separate lists, so this is the one place to look.
 | 37 | Packaging of host and the bridges | twgl.tree docs (2026-09-13: the examples loaded tree and host twice, once inside `twgl.tree.js` and again as their own modules) | each ES build bundles its @nakednous dependencies | ESM only, dependencies external | **ESM with externals, plus a UMD** (Pierre, 2026-09-13) — host's ES build leaves tree external; twgl.tree's ES build (`module`, `exports.import`) leaves twgl.js, tree and host external, so each loads once; a UMD (`main`, `exports.require`, `jsdelivr`: `dist/twgl.tree.umd.cjs`) bundles tree and host as `twglTree.tree` and `twglTree.host`, reads the global `twgl`, and serves script-tag pages |
 | 38 | twgl.tree docs shape | twgl.tree docs (2026-09-13) | module examples: an import map sends twgl.js to the CDN and twgl.tree, tree, host to site-local ES builds | UMD examples as p5.tree's: two script tags, the `twglTree` global, no imports | **deferred** (Pierre, 2026-09-13) — the site keeps the module examples until ruled |
 | 39 | tree and host through the bridge | twgl.tree (2026-09-13) | applications import `@nakednous/tree` and `@nakednous/host` beside the bridge | a flat `export *` of both from twgl.tree | **namespaced re-exports** (Pierre, 2026-09-13) — twgl.tree exports `tree` and `host` (`export * as tree`, `export * as host`), the shape of the UMD's `twglTree.tree` / `twglTree.host` and of p5.tree's `p5.Tree`; a flat re-export would let clashing names (`SCREEN`, the bridge's `null` target, against tree's space constant) resolve silently; the ES build keeps both external, so direct imports of the packages stay valid and share the one instance; examples and the harness import the stack from `twgl.tree` alone |
+| 40 | Loading models | §1.4, host media (2026-09-13) | glTF through `@gltf-transform/core` behind a bridge adapter, later; OBJ assets converted to glTF once | — | **host `loadModel` over `webgl-obj-loader`** (Pierre, 2026-09-13) — an adapter only: fetch, `new OBJ.Mesh(text)`, the mesh copied into the arrays shape `{ position, normal?, texcoord?, indices }` with no `count` or `labels`, so `createBufferInfoFromArrays` takes it as it is; no parser in the stack; glTF follows through a parser package of its own |
+| 41 | Packaging the OBJ parser | host (2026-09-13) | — | a runtime dependency, external in the ES build | **pending** — a devDependency bundled into host's dist through `@rollup/plugin-commonjs` (the package ships a webpack UMD only), so host's runtime dependencies stay tree alone and no import map gains an entry |
 
 Thirty-six rows; sixteen ruled (September 2026), #16, #18–#26 and #28–#35 pending, #36 deferred;
 the table stays as the record. New rows are added here as implementation surfaces them.
