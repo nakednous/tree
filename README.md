@@ -616,6 +616,8 @@ projLeft  projRight  projTop  projBottom
 
 **Pixel ratio:** `pixelRatio(proj, vpH, eyeZ, ndcZMin)` — world-units-per-pixel at a given depth, handles both perspective and orthographic.
 
+**Viewport matrix:** `mat4Viewport(out, vp, ndcZMin)` — the matrix `W` taking NDC to screen coordinates, so world → screen is `(W · P · V · p) / w` through `mat4MulPoint` and screen → world the inverse of that composition
+
 **Pick matrix:** `mat4Pick(proj, px, py, vp)` — mutates a projection matrix in-place so that the pixel at `(px, py)` maps to the full NDC square, making a 1×1 FBO render contain exactly that pixel. Takes the same signed viewport `vp` as `mapLocation` — the y-convention is preserved automatically.
 
 **Pointer ray:** `unproject(outO, outD, sx, sy, m, vp, ndcZMin)` — a screen point as a world ray: origin on the near plane, unit direction toward the far plane. Same bag and signed viewport as `mapLocation` (`mat4PVInv` filled by the caller); `null` when the bag has no inverse. The point-at-depth form stays `mapLocation(SCREEN → WORLD)` with a depth in `z`.

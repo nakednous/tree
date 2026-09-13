@@ -662,6 +662,32 @@ export function pixelRatio(proj, vpH, eyeZ, ndcZMin) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * The viewport matrix W: NDC into screen coordinates, the S · T that seats the
+ * NDC cube in the viewport rectangle and carries NDC depth into [0, 1].
+ *
+ *   ┌ w/2   0     0      x + w/2 ┐
+ *   │  0   h/2    0      y + h/2 │     vp = [x, y, w, h], h < 0 for screen y-down
+ *   │  0    0   1/(1−n)  −n/(1−n) │     n = ndcZMin
+ *   └  0    0     0         1    ┘
+ *
+ * W is affine, so world → screen is one composition, (W · P · V · p) / w, and
+ * screen → world its inverse — the same points mapLocation's WORLD ↔ SCREEN reaches.
+ *
+ * @param {Float32Array|number[]} out  16-element destination.
+ * @param {number[]} vp  Viewport [x, y, w, h]; same signed convention as mapLocation.
+ * @param {number} ndcZMin  WEBGL (−1) or WEBGPU (0).
+ * @returns {Float32Array|number[]} out
+ */
+export function mat4Viewport(out, vp, ndcZMin) {
+  const hw = vp[2] / 2, hh = vp[3] / 2, dz = 1 / (1 - ndcZMin);
+  out[0]=hw;          out[1]=0;           out[2]=0;              out[3]=0;
+  out[4]=0;           out[5]=hh;          out[6]=0;              out[7]=0;
+  out[8]=0;           out[9]=0;           out[10]=dz;            out[11]=0;
+  out[12]=vp[0] + hw; out[13]=vp[1] + hh; out[14]=-ndcZMin * dz; out[15]=1;
+  return out;
+}
+
+/**
  * Mutate a projection matrix in-place so that the pixel at (px, py) maps to
  * the full NDC square — making a 1×1 FBO render contain exactly that pixel.
  *

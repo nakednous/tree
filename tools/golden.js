@@ -561,6 +561,9 @@ const query = {
       [O, 480, -5, WEBGL], [O, 480, -50, WEBGL],                              // ortho: depth-independent
       [Pgpu, 480, -5, WEBGPU],
     ]),
+    mat4Viewport: f32([
+      [M16, DOWN, WEBGL], [M16, UP, WEBGL], [M16, OFF, WEBGL], [M16, DOWN, WEBGPU],
+    ], { writes: [0] }),
     mat4Pick: f32([
       [P, 320, 240, DOWN], [P, 100, 50, UP], [P, 100, 50, DOWN], [O, 320, 240, DOWN],
     ], { writes: [0] }),
