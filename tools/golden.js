@@ -274,6 +274,7 @@ const constants = {
 
 const quat = {
   functions: {
+    quat:  f64([[]]),
     qSet:  f64([[Z4, 1, 2, 3, 4]]),
     qCopy: f64([[Z4, Q.g]]),
     qDot:  f64([[Q.id, Q.id], [Q.g, Q.h], [Q.g, neg(Q.g)], [Q.x90, Q.y90]]),
@@ -419,6 +420,9 @@ const form = {
     ]),
     mat4FromTranslation: f32([[M16, 1, 2, 3]]),
     mat4FromScale: f32([[M16, 2, 3, 4], [M16, -1, 1, 1]]),
+    mat4: f32([[]]),
+    mat3: f32([[]]),
+    vec3: f64([[]]),
     mat4Ortho: f32([
       [M16, -2, 2, -1, 1, 0.1, 100, WEBGL],
       [M16, -2, 2, -1, 1, 0.1, 100, WEBGPU],
@@ -1068,6 +1072,7 @@ const perspG = tree.frustumPlanes(new Array(24).fill(0), ...camG, false, 0.1, 10
 const visibility = {
   constants: ['PLANE_LEFT', 'PLANE_RIGHT', 'PLANE_NEAR', 'PLANE_FAR', 'PLANE_TOP', 'PLANE_BOTTOM'],
   functions: {
+    planes: f64([[]]),
     frustumPlanes: f64([
       [P24, ...camO, false, 0.1, 100, Fr[0], Fr[1], Fr[3], Fr[2]],
       [P24, ...camO, true, 0.1, 100, -2, 2, 1, -1],

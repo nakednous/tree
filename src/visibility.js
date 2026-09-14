@@ -3,11 +3,20 @@
  * @module tree/visibility
  * @license AGPL-3.0-only
  *
- * Planes are a flat Float64Array(24): 6 planes × 4 floats [a, b, c, d].
+ * Planes are a flat Float64Array(24): 6 planes × 4 floats [a, b, c, d];
+ * `planes()` makes that storage once, at setup.
  * All inputs are scalars. All outputs are INVISIBLE | VISIBLE | SEMIVISIBLE.
  */
 
 import { INVISIBLE, VISIBLE, SEMIVISIBLE } from './constants.js';
+
+/**
+ * New storage for six frustum planes: a zero Float64Array(24), made at setup.
+ * @returns {Float64Array}
+ */
+export function planes() {
+  return new Float64Array(24);
+}
 
 // Plane indices
 export const PLANE_LEFT = 0, PLANE_RIGHT = 1, PLANE_NEAR = 2,

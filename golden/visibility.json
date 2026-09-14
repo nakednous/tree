@@ -3,6 +3,10 @@
   "tolerance": {"exact": 0, "f64": 0.000001, "f32": 0.00001},
   "constants": {"PLANE_LEFT": 0, "PLANE_RIGHT": 1, "PLANE_NEAR": 2, "PLANE_FAR": 3, "PLANE_TOP": 4, "PLANE_BOTTOM": 5},
   "functions": {
+    "planes": {
+      "tol": "f64",
+      "cases": [{"args": [], "out": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}]
+    },
     "frustumPlanes": {
       "tol": "f64",
       "cases": [

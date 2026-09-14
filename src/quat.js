@@ -5,13 +5,17 @@
  *
  * Quaternions are stored as flat [x, y, z, w] arrays (w-last, glTF layout).
  *
- * All functions follow the out-first, zero-allocation contract.
+ * All functions follow the out-first, zero-allocation contract; `quat()`
+ * makes that storage once, at setup.
  * Conversion functions bridge between quaternion and matrix representations
  * but do not perform any higher-level graphics operations — those belong
  * in form.js (matrix construction from specs) or track.js (animation).
  */
 
 'use strict';
+
+/** A new identity quaternion [0, 0, 0, 1]: storage for the out-first functions, made at setup. @returns {number[]} */
+export const quat = () => [0, 0, 0, 1];
 
 // =========================================================================
 // Basic ops

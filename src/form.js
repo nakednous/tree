@@ -31,10 +31,44 @@
  * NDC-y direction and is handled in query.js via the signed viewport height.
  * See the query.js module header for details.
  *
- * All functions follow the out-first, zero-allocation contract.
+ * All functions follow the out-first, zero-allocation contract. The
+ * allocators mat4, mat3 and vec3 make that storage — once, at setup — so a
+ * call reads `mat4FromTRS(mat4(), …)` rather than naming a typed array.
  */
 
 'use strict';
+
+// =========================================================================
+// Allocation
+// =========================================================================
+
+/**
+ * A new identity mat4: storage for the out-first functions, made at setup.
+ * @returns {Float32Array}
+ */
+export function mat4() {
+  const m = new Float32Array(16);
+  m[0] = m[5] = m[10] = m[15] = 1;
+  return m;
+}
+
+/**
+ * A new identity mat3: storage for the out-first functions, made at setup.
+ * @returns {Float32Array}
+ */
+export function mat3() {
+  const m = new Float32Array(9);
+  m[0] = m[4] = m[8] = 1;
+  return m;
+}
+
+/**
+ * A new zero vec3: storage for the out-first functions, made at setup.
+ * @returns {number[]}
+ */
+export function vec3() {
+  return [0, 0, 0];
+}
 
 // =========================================================================
 // Frame construction

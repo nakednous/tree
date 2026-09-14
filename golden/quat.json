@@ -2,6 +2,7 @@
   "module": "quat",
   "tolerance": {"exact": 0, "f64": 0.000001, "f32": 0.00001},
   "functions": {
+    "quat": {"tol": "f64", "cases": [{"args": [], "out": [0, 0, 0, 1]}]},
     "qSet": {"tol": "f64", "cases": [{"args": [[0, 0, 0, 0], 1, 2, 3, 4], "out": [1, 2, 3, 4]}]},
     "qCopy": {
       "tol": "f64",
