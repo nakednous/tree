@@ -233,7 +233,7 @@ twgl, with state per context held in a registry keyed by `gl`.
 | `clear()` | twgl | `gl.clear` — not re-wrapped |
 | `cullFace(FRONT)` | twgl | `gl.cullFace` — render state stays raw |
 | `setCamera(V, P)` · `setCamera(cam)` | twgl.tree | `setCamera(V, P)` · `setCamera(cam)` — installs the transform state `draw` reads |
-| `renderTarget()` · `(width, height)` · `(depth)` · `(color: [a, b])` | twgl.tree | `renderTarget(opts)` over `twgl.createFramebufferInfo` — resolves the four shapes, `drawBuffers` for the multi-target one, `fbo.depth` · `fbo.a` as named attachments; sampling options with today's defaults (linear, clamp) and a multisampled form resolved into its textures |
+| `renderTarget()` · `(width, height)` · `(depth)` · `(color: [a, b])` | twgl.tree | `renderTarget(opts)` over `twgl.createFramebufferInfo` — resolves the four shapes, `drawBuffers` for the multi-target one, `fbo.depth` · `fbo.a` as named attachments; `format` per target or per attachment (§7 #50); sampling follows one fixed rule the notation never writes — colour linear and clamp, depth nearest — with bridge options beside it, and a bridge-only multisampled form (§7 #48, #49) |
 | `beginPass(target)` · `screen` | twgl | `twgl.bindFramebufferInfo(gl, fbo)` · `bindFramebufferInfo(gl, null)` — not re-wrapped; a `SCREEN` constant names `null` |
 | `filter(prog)` · `filter(prog, { … })` | twgl.tree | `filter(prog, uniforms)` — `bind` + `draw(fullscreen)`; the input arrives as `tex0` |
 | `fullscreen` | twgl.tree | `fullscreen()` — the cached covering quad |
@@ -299,6 +299,18 @@ restructuring; carried here until the freeze, then closed.
   V_light` defines a value; `bind(prog, { uWorldLightMatrix, … })` consumes it. One bag of
   such definitions — the one a `[panel: …]` already writes into — may be handed to every
   program a hero binds, each program reading the names it declares (§7 #46).
+- **`uSource` is the implicit input only.** It names the one image a framework hands a
+  shader unasked — the input of `filter` and of each `pipe` stage. Every sampler a hero binds
+  itself keeps its own name (`uDepth`, `uScene`, `uScreenTex`, `uMedia`, the G-buffer's);
+  a pass that reads its input by such a name binds it in the listing (`uMedia = source`).
+- **The heroes' audit (2026-09-13) — pseudo blocks to correct.** The notation's target
+  shapes cover every hero; these listings are wrong as written: *noise* draws `source`
+  where the sketch binds `uMedia = source`; *dof* calls `filter` after `beginPass(screen)`
+  with no `image(fbo)`, so the target never reaches the shader; the *pipe* page shows two
+  targets where the sketch needs three (the scene's depth must survive the chain);
+  *mirrors* and *portals* write `uResolution = [width, height]`, and *convolution* and
+  *post_effects* compute `uTexelSize` from CSS size — both off by the pixel density on HiDPI
+  screens (§7 #51). *mosaic*'s `bake(…)` is spelled out (§7 #53).
 
 ### 2.4 Golden vectors — the port contract
 
@@ -749,8 +761,12 @@ keeping separate lists, so this is the one place to look.
 | 45 | The filtered image's uniform name | §2.3, the heroes (2026-09-13: 17 notebook files read `tex0`, 14 already `uTexelSize` / `uResolution`) | `tex0`, p5's filter convention | keep both conventions in the book | **`u*` in the book, a hidden door for p5** (Pierre, 2026-09-13) — shaders say the `u*` name; the p5 ground inserts `#define <name> tex0` (and `uTexelSize` → `texelSize`, `uResolution` → `canvasSize` where a hero needs them) after `#version`; twgl.tree's `filter` and `pipe` fill the `u*` name, and `tex0` beside it while heroes migrate. the name is **`uSource`** (Pierre, 2026-09-13), matching `pipe`'s `source` argument in both bridges |
 | 46 | A uniforms bag | §2.3 (2026-09-13) | per-bind object literals of bare names | one bag of definitions handed to every `bind` | **pending** — the bag, since `twgl.setUniforms` ignores names a program does not declare and the `[panel: …]` target already is one; the code stays imperative, one tree or twgl call per definition into preallocated values — no reactive layer |
 | 47 | What stays on p5 | the notebook (2026-09-13) | every hero ports to the stack | — | **figure-only sketches stay on p5** (Pierre, 2026-09-13) unless porting one sharpens the design; the notebook keeps a `p5` branch as the backup of every sketch on p5 and `tex0`, created from `main` before the migration |
-| 48 | Sampling a render target | twgl.tree `target.js` (2026-09-13) | attachments fixed at linear filtering, clamp to edge | — | **options with today's defaults** (Pierre, 2026-09-13) — `renderTarget(gl, { minMag, wrap })`, defaulting to linear and clamp so every current hero reads the same |
-| 49 | Multisampled render targets | twgl.tree `target.js` (2026-09-13: p5's `createFramebuffer` antialiases by default, twgl.tree's targets do not) | single-sampled targets | — | **included** (Pierre, 2026-09-13) — a multisampled form (`{ samples }`) rendering into renderbuffers and resolved into the target's textures by a blit; the default sample count is **pending**; line quality stays deferred with §7 #2 |
+| 48 | Sampling a render target | twgl.tree `target.js` (2026-09-13) | attachments fixed at linear filtering, clamp to edge | a notation argument (`renderTarget(filter: NEAREST)`) | **options with today's defaults, silent in the notation** (Pierre, 2026-09-13) — `renderTarget(gl, { minMag, wrap })`, linear and clamp by default; the heroes' audit found no hero asking for nearest or repeat on a target (depth textures are nearest by a GL ES rule), so the notation states one fixed rule — colour linear and clamp, depth nearest — as `vc.hpp` and `vc.rs` already follow |
+| 49 | Multisampled render targets | twgl.tree `target.js` (2026-09-13) | single-sampled targets | `renderTarget(samples: n)` with a resolve step in the notation | **a bridge-only option at 1 sample** (Pierre, 2026-09-13) — `{ samples }` draws into multisampled renderbuffers and `resolve()` blits them into the textures (`pipe` and `readPixel` resolve a target they are handed). The heroes' audit corrected the premise: p5 v2's `createFramebuffer` does not antialias by default — it inherits the canvas's `antialias`, off except in Safari, and resolves on first read — and no hero asks for a multisampled target (picking needs one off). The notation stays silent; line quality stays deferred with §7 #2 |
+| 50 | A target's pixel format | the heroes' audit (2026-09-13) | 8-bit colour; `float: true` as a bridge flag | — | **`format` in the notation** (Pierre, 2026-09-13) — `renderTarget(format: FLOAT)` and per attachment `color: [position: HALF_FLOAT, …]`; it changes results in *post_effects* (8-bit clips the HDR chain) and *deferred* (half-float positions). twgl.tree: `renderTarget(gl, { format })` with `gl.UNSIGNED_BYTE` · `gl.HALF_FLOAT` · `gl.FLOAT`, and `color: { name: format, … }`; `float: true` stays shorthand for half-float |
+| 51 | What `width · height` measures | the heroes' audit (2026-09-13) | unstated; p5 sketches pass CSS size | — | **device pixels** (Pierre, 2026-09-13) — the drawing buffer, what `gl_FragCoord` counts and what native hosts get; `uResolution` and `uTexelSize` follow. twgl.tree already reads `gl.drawingBufferWidth` / `Height` for targets and passes |
+| 52 | A texture from generated pixels | the heroes' audit (2026-09-13: the panorama, normal and height maps, the colour-ops test card, the texture archetype's pattern) | `hosts.md` has the row, the notation no symbol | reuse `load(file)` | **`texture(pixels)`** (Pierre, 2026-09-13) — realized by twgl.tree's `texture(gl, { data, width, height })` |
+| 53 | Baking a palette strip | *mosaic* (2026-09-13) | `uPalette = bake(sort(tiles, by: luma))`, an undefined symbol | `bake(images, cell:, format:)` · `strip(…)` | **spelled out, no symbol** (Pierre, 2026-09-13) — `palette = renderTarget(cell · count, cell, format: FLOAT)` · `beginPass(palette)` · `for i, img in sort(tiles, by: luma): image(img, x: i · cell)` · `uPalette = palette.color`; in twgl.tree the same four lines port one call each, and a live re-bake is those lines run again |
 
 Thirty-six rows; sixteen ruled (September 2026), #16, #18–#26 and #28–#35 pending, #36 deferred;
 the table stays as the record. New rows are added here as implementation surfaces them.
