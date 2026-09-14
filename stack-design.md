@@ -460,8 +460,9 @@ supplied programs, pick resources) lives in a registry keyed by `gl`. Modules:
   `uNormalMatrix`.
 - **`target.js`** — `renderTarget(opts)` in the four shapes; `SCREEN`.
 - **`pass.js`** — `program(frag)`, `fullscreen()`, `filter(prog, uniforms)`, `image(tex,
-  opts)`, `pipe(source, passes, opts)` — the ping-pong chain with cached targets, `tex0`
-  and `uResolution` · `uTexelSize` on the notebook's conventions.
+  opts)`, `pipe(source, passes, opts)` — the ping-pong chain with cached targets; the input bound
+  as `uSource` (and as `tex0` for shaders written to p5's convention), `uResolution` ·
+  `uTexelSize` on the notebook's conventions.
 - **`pick.js`** — `readPixel(fbo, x, y) → Promise` over a PBO and a fence sync polled per
   frame; `pick(x, y, drawFn) → Promise<id>` over a 1×1 target and `mat4Pick`.
 - **`texture.js`** — `upload(tex, source)` for bitmaps, video and elements; cubemaps.
