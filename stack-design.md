@@ -181,7 +181,10 @@ The framework line, stated once. `host.md` separates a *framework* — what "fil
 built-in transforms from its camera and model state, so a bare `scene()` supplies them
 silently" — from a no-framework host that "uploads each by hand." The bridge sits exactly on
 that line: it supplies what the notation says a framework supplies silently, and nothing the
-notation writes explicitly. So a `twgl.tree` hero reads as the pseudo-host with the thin
+notation writes explicitly. *Silently* is measured against the Archetypes: what every
+archetype column (raw twgl, moderngl, `vc.hpp`, `vc.rs`) writes by hand and the notation
+leaves out is what a bridge may supply; what a column writes and the notation omits too is a
+notation gap, closed in the notation, never in the bridge. So a `twgl.tree` hero reads as the pseudo-host with the thin
 layer's own verbs still visible, and what remains of dissolution is the two things the
 notebook's audit already isolates — cut the overlay, drop the framework's silences. The
 Archetypes JavaScript column stays raw twgl; `twgl.tree` is the hero substrate *on* that
@@ -232,6 +235,7 @@ twgl, with state per context held in a registry keyed by `gl`.
 | `scene()` | — | application code |
 | `clear()` | twgl | `gl.clear` — not re-wrapped |
 | `cullFace(FRONT)` | twgl | `gl.cullFace` — render state stays raw |
+| `depthTest(on)` | twgl | `gl.enable(DEPTH_TEST)` · `gl.disable(DEPTH_TEST)` — render state stays raw; written per pass as the archetype columns write it (§7 #42) |
 | `setCamera(V, P)` · `setCamera(cam)` | twgl.tree | `setCamera(V, P)` · `setCamera(cam)` — installs the transform state `draw` reads |
 | `renderTarget()` · `(width, height)` · `(depth)` · `(color: [a, b])` | twgl.tree | `renderTarget(opts)` over `twgl.createFramebufferInfo` — resolves the four shapes, `drawBuffers` for the multi-target one, `fbo.depth` · `fbo.a` as named attachments; `format` per target or per attachment (§7 #50); sampling follows one fixed rule the notation never writes — colour linear and clamp, depth nearest — with bridge options beside it, and a bridge-only multisampled form (§7 #48, #49) |
 | `beginPass(target)` · `screen` | twgl | `twgl.bindFramebufferInfo(gl, fbo)` · `bindFramebufferInfo(gl, null)` — not re-wrapped; a `SCREEN` constant names `null` |
@@ -296,9 +300,15 @@ restructuring; carried here until the freeze, then closed.
   The p5 realization reaches p5's filter names through a `#define` the ground inserts after
   `#version`, so no listing ever shows `tex0`.
 - **Uniforms are definitions `bind` reads by name.** `uWorldLightMatrix = B · P_light ·
-  V_light` defines a value; `bind(prog, { uWorldLightMatrix, … })` consumes it. One bag of
-  such definitions — the one a `[panel: …]` already writes into — may be handed to every
-  program a hero binds, each program reading the names it declares (§7 #46).
+  V_light` defines a value; `bind(prog, { uWorldLightMatrix, … })` consumes it. Listings keep
+  the per-bind list — it teaches which uniforms a pass consumes, as the archetype columns'
+  one `setUniforms` object per bind does; a bag of definitions handed to every `bind`
+  appears only behind a `[panel: …]`, which already writes one (§7 #46).
+- **The depth test is render state the listing writes.** Every archetype column spells it
+  out (`local-lighting.md`'s *What differs* table) and switches it per pass — on for the
+  scene, off before a fullscreen pass — while no listing names it. `depthTest(on)` joins
+  `cullFace(FRONT)` in the render-state row; the composites (`filter`, `image`, the gizmos)
+  keep switching it inside themselves (§7 #42).
 - **`uSource` is the implicit input only.** It names the one image a framework hands a
   shader unasked — the input of `filter` and of each `pipe` stage. Every sampler a hero binds
   itself keeps its own name (`uDepth`, `uScene`, `uScreenTex`, `uMedia`, the G-buffer's);
@@ -435,7 +445,7 @@ Doc: `host-design.md`.
 
 **Rationale.** `twgl.tree` is an experimental implementation of the notebook's pseudo-code
 design on WebGL2, expected to rest on the foundations: `tree`'s math, twgl's calls, and only
-what a framework supplies silently in between. A hero that ports line for line confirms a
+what the archetype columns write by hand and the notation leaves out. A hero that ports line for line confirms a
 piece of the notation; a hero that cannot is where the notation changes, not the bridge.
 
 The render host's ceremony over twgl. Depends on tree and host; `twgl.js` is a peer. Every
@@ -755,11 +765,11 @@ keeping separate lists, so this is the one place to look.
 | 39 | tree and host through the bridge | twgl.tree (2026-09-13) | applications import `@nakednous/tree` and `@nakednous/host` beside the bridge | a flat `export *` of both from twgl.tree | **namespaced re-exports** (Pierre, 2026-09-13) — twgl.tree exports `tree` and `host` (`export * as tree`, `export * as host`), the shape of the UMD's `twglTree.tree` / `twglTree.host` and of p5.tree's `p5.Tree`; a flat re-export would let clashing names (`SCREEN`, the bridge's `null` target, against tree's space constant) resolve silently; the ES build keeps both external, so direct imports of the packages stay valid and share the one instance; examples and the harness import the stack from `twgl.tree` alone |
 | 40 | Loading models | §1.4, host media (2026-09-13) | glTF through `@gltf-transform/core` behind a bridge adapter, later; OBJ assets converted to glTF once | — | **host `loadModel` over `webgl-obj-loader`** (Pierre, 2026-09-13) — an adapter only: fetch, `new OBJ.Mesh(text)`, the mesh copied into the arrays shape `{ position, normal?, texcoord?, indices }` with no `count` or `labels`, so `createBufferInfoFromArrays` takes it as it is; no parser in the stack; glTF follows through a parser package of its own |
 | 41 | Packaging the OBJ parser | host (2026-09-13) | — | a runtime dependency, external in the ES build | **pending** — a devDependency bundled into host's dist through `@rollup/plugin-commonjs` (the package ships a webpack UMD only), so host's runtime dependencies stay tree alone and no import map gains an entry |
-| 42 | The depth test as a framework silence | twgl.tree harness, the toon and shadow heroes (2026-09-13) | the notation never writes a depth test; `clear()` and `beginPass` stay raw (§2.2), so a twgl.tree hero enables `gl.DEPTH_TEST` itself | `init(gl)` enables the depth test once, as p5 does silently, by §2.1's framework line | **pending** — each hero enables it once after `init`; `gizmo`, `image` and `filter` already switch it per call and restore it |
+| 42 | The depth test as a framework silence | twgl.tree harness, the toon and shadow heroes (2026-09-13) | the notation never writes a depth test; `clear()` and `beginPass` stay raw (§2.2), so a twgl.tree hero enables `gl.DEPTH_TEST` itself | `init(gl)` enables the depth test once, as p5 does silently | **a notation symbol, raw in the bridge** (Pierre, 2026-09-13) — measured against the Archetypes (§2.1) the depth test is no silence: every column writes it and switches it per pass, so the gap is the notation's. `depthTest(on)` joins the render-state row beside `cullFace(FRONT)`; twgl.tree realizes it as `gl.enable` / `gl.disable`, nothing in `init`; `filter`, `image` and the gizmos keep switching it inside and restoring it |
 | 43 | The viewport as a matrix | §2.2, pipeline chapter (2026-09-13) | `viewport(·)` realized by `mapLocation(…, WORLD, SCREEN, …)` | a `viewport(out, ndc, vp)` point function | **`mat4Viewport(out, vp, ndcZMin)`** (Pierre, 2026-09-13) — the S · T of the pipeline chapter's viewport rows, signed `vp` for y-down, `ndcZMin` for the depth row; world → screen composes it, screen → world inverts the composition; a core export with its golden case |
 | 44 | Named spaces off the teaching surface | §2.2 (2026-09-13) | the `→` row realized by `mapLocation` · `mapDirection` | the arrow as a notation symbol | **math with the spaces as comments** (Pierre, 2026-09-13) — pseudo-code and examples write the product (`V · p`, `M_B⁻¹ · M_A · p`) under a `// FROM → TO` comment; `mapLocation` · `mapDirection` stay exported for host, the bridges and debugging, but leave the notation, the twgl.tree examples and, when p5.tree next revises its docs, its rendered reference |
 | 45 | The filtered image's uniform name | §2.3, the heroes (2026-09-13: 17 notebook files read `tex0`, 14 already `uTexelSize` / `uResolution`) | `tex0`, p5's filter convention | keep both conventions in the book | **`u*` in the book, a hidden door for p5** (Pierre, 2026-09-13) — shaders say the `u*` name; the p5 ground inserts `#define <name> tex0` (and `uTexelSize` → `texelSize`, `uResolution` → `canvasSize` where a hero needs them) after `#version`; twgl.tree's `filter` and `pipe` fill the `u*` name, and `tex0` beside it while heroes migrate. the name is **`uSource`** (Pierre, 2026-09-13), matching `pipe`'s `source` argument in both bridges |
-| 46 | A uniforms bag | §2.3 (2026-09-13) | per-bind object literals of bare names | one bag of definitions handed to every `bind` | **pending** — the bag, since `twgl.setUniforms` ignores names a program does not declare and the `[panel: …]` target already is one; the code stays imperative, one tree or twgl call per definition into preallocated values — no reactive layer |
+| 46 | A uniforms bag | §2.3 (2026-09-13) | per-bind object literals of bare names | one bag of definitions handed to every `bind` | **per-bind lists; a bag only behind a panel** (Pierre, 2026-09-13) — `bind(prog, { uA, uB })` stays the listing's form because it teaches what a pass consumes, as the archetype columns' one `setUniforms` object per bind does; where a `[panel: …]` drives many uniforms its bag may be handed to `bind` whole, which twgl already allows (`setUniforms` ignores undeclared names). The code stays imperative, one tree or twgl call per definition into preallocated values — no reactive layer, nothing to implement |
 | 47 | What stays on p5 | the notebook (2026-09-13) | every hero ports to the stack | — | **figure-only sketches stay on p5** (Pierre, 2026-09-13) unless porting one sharpens the design; the notebook keeps a `p5` branch as the backup of every sketch on p5 and `tex0`, created from `main` before the migration |
 | 48 | Sampling a render target | twgl.tree `target.js` (2026-09-13) | attachments fixed at linear filtering, clamp to edge | a notation argument (`renderTarget(filter: NEAREST)`) | **options with today's defaults, silent in the notation** (Pierre, 2026-09-13) — `renderTarget(gl, { minMag, wrap })`, linear and clamp by default; the heroes' audit found no hero asking for nearest or repeat on a target (depth textures are nearest by a GL ES rule), so the notation states one fixed rule — colour linear and clamp, depth nearest — as `vc.hpp` and `vc.rs` already follow |
 | 49 | Multisampled render targets | twgl.tree `target.js` (2026-09-13) | single-sampled targets | `renderTarget(samples: n)` with a resolve step in the notation | **a bridge-only option at 1 sample** (Pierre, 2026-09-13) — `{ samples }` draws into multisampled renderbuffers and `resolve()` blits them into the textures (`pipe` and `readPixel` resolve a target they are handed). The heroes' audit corrected the premise: p5 v2's `createFramebuffer` does not antialias by default — it inherits the canvas's `antialias`, off except in Safari, and resolves on first read — and no hero asks for a multisampled target (picking needs one off). The notation stays silent; line quality stays deferred with §7 #2 |
