@@ -2,7 +2,7 @@
 
 > Target: `@nakednous/tree` 0.0.28, a new `src/gizmo.js` plus the gizmo bit constants and
 > the semantic palette in `src/constants.js`. Consumers: the bridges' line pipes
-> (`twgl.tree` `gizmo.js`, its twin), and optionally `p5.tree`'s gizmos through
+> (`webgl.tree` `gizmo.js`, its twin), and optionally `p5.tree`'s gizmos through
 > `beginShape(LINES)`. Apex: `stack-design.md` §3.2. The reference for every ported gizmo
 > is `p5.tree/src/{gizmos,handle,helm,track}.js`.
 > Status: **design only** — no code. Names marked *(provisional)* are open to veto.
