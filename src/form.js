@@ -70,6 +70,14 @@ export function vec3() {
   return [0, 0, 0];
 }
 
+/**
+ * A new zero vec2: storage for the out-first functions, made at setup.
+ * @returns {number[]}
+ */
+export function vec2() {
+  return [0, 0];
+}
+
 // =========================================================================
 // Frame construction
 // =========================================================================
