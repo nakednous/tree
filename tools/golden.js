@@ -1023,7 +1023,7 @@ const helm = {
       { call: 'feed', args: [[100, 0, 0], [0, 0, 0]] },
       { call: 'step', args: [POSE0, 1, tree.mat4Eye([], 3, 4, 5, 0, 1, 0, 0, 1, 0)] },           // +X → the camera's right
       { call: 'home' }, { call: 'feed', args: [[0, 0, 100]] },
-      { call: 'step', args: [POSE0, 1, tree.mat4Eye([], 3, 4, 5, 0, 1, 0, 0, 1, 0)] },           // lane 2 → Ty (up)
+      { call: 'step', args: [POSE0, 1, tree.mat4Eye([], 3, 4, 5, 0, 1, 0, 0, 1, 0)] },           // lane 2 → Ty, sign −1: a positive rate (the cap pushed down) moves down
       { call: 'home' }, { call: 'feed', args: [[0, 100, 0]] },
       { call: 'step', args: [POSE0, 1, tree.mat4Eye([], 3, 4, 5, 0, 1, 0, 0, 1, 0)] },           // lane 1 → Tz, sign −1: a positive rate moves back
       { call: 'home' }, { call: 'feed', args: [[0, 0, 0], [100, 0, 0]] },

@@ -93,7 +93,7 @@ const _dz = (v, dz) => (v > dz || v < -dz) ? v : 0;
 function _defaultProfile() {
   return {
     Tx: { sign:  1, sens: 0.30,   lane: 0 },
-    Ty: { sign:  1, sens: 0.30,   lane: 2 },
+    Ty: { sign: -1, sens: 0.30,   lane: 2 },   // the device's third lane reads positive pushing the cap down
     Tz: { sign: -1, sens: 0.30,   lane: 1 },
     Rp: { sign: -1, sens: 0.0025, lane: 0 },
     Ry: { sign: -1, sens: 0.0025, lane: 2 },
