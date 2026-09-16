@@ -6,6 +6,7 @@
 export * from './constants.js';
 export * from './quat.js';
 export * from './filter.js';
+export * from './coast.js';
 export * from './form.js';
 export * from './query.js';
 export * from './track.js';

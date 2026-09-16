@@ -1337,7 +1337,22 @@ const gizmo = {
   },
 };
 
-const MODULES = { constants, quat, filter, form, query, track, handle, helm, visibility, camera, gizmo };
+const coast = {
+  functions: {
+    coastStep: f64([
+      [[0, 0, 0, 0, 0], [1, -2, 0.5, 0, 3], DT, 0.5],      // one frame of a five-lane rate
+      [[0, 0], [1, -2], 1, 1],                              // one time constant: travel 1 − 1/e
+      [[0, 0], [1, -2], 0, 0.5],                            // dt 0: no travel, the rate kept
+      [[0, 0], [1, -2], DT, 0],                             // tau 0: exact — no travel, the rate zeroed
+      [[0, 0], [1, -2], 10, 0.5],                           // a long dt: the whole travel v · tau
+    ], { writes: [1] }),
+    coastAlive: exact([
+      [[0, 0, 0], 1e-4], [[0, 2e-4, 0], 1e-4], [[0, -1e-4, 0], 1e-4], [[0, 0.5e-4, 0], 1e-4], [[], 1e-4],
+    ]),
+  },
+};
+
+const MODULES = { constants, quat, filter, coast, form, query, track, handle, helm, visibility, camera, gizmo };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const [name, spec] of Object.entries(MODULES)) generate(name, spec);
