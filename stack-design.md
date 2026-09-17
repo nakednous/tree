@@ -551,6 +551,25 @@ figurines, and both are host-side DOM.
   parts, foundations last. `p5.tree` keeps running the unported figures throughout — nothing
   breaks in the interim.
 
+### 4.3 Factorization ledger
+
+What the ports keep notebook-side today that belongs in the stack, so the notebook stays as thin as
+the pseudo-host. Each item names its layer by the rules of §1; an item moves in its own stage with a
+§7 row, and leaves this ledger when it lands. The rule of thumb: numeric and out-first → tree;
+DOM, media, input → host; GL ceremony over twgl → webgl.tree; panel and layout → ui.
+
+| notebook module today | what it holds | belongs to | row |
+|---|---|---|---|
+| `nb/mesh` | model normals, bounds; the arrays shape renamed to the bridge's attributes; `alignY` (a rotation taking +y to a heading) | tree (`meshNormals`, `meshBounds`, `qFromTo`); host `loadModel` computing normals through tree; webgl.tree `buffer(gl, arrays)` | #67 |
+| `nb/panel` | bindings laid out in columns, kept across collapse | ui: a `columns` option on `createPanel` | #68 |
+| `nb/lit` | a lit program (ambient, key + fill, Phong, emissive, alpha) with rigs, the stand-in for p5's `lights()` and materials | webgl.tree: a stock lit program and a rig-in-eye helper — revisits §4.1's "the bridge ships no public program" | — |
+| `nb/hud` | one line of HUD text as DOM in the page's ink | host: the label overlay (`host.labels`) already typesets anchored text; a screen-anchored line is its HUD case | — |
+| `nb/screenpane` | a quad sampling a target in screen space | webgl.tree: `pane` with a screen-space sampling option, or a `screenPane` beside it | — |
+| `nb/source` | 30 stills + a video as one texture per frame | host media: a `createSource` over `loadImage` / `createVideo`; the upload stays the bridge's | — |
+| `nb/tabs` | a deselectable tab strip switching panels | ui: a tab strip primitive | — |
+| a reflection matrix (mirror hero) | `T(2a) · S(1, 1, −1)` composed left of every prop | tree: `mat4Reflect(out, plane)` | — |
+| `nb/envmap`, `nb/city`, `nb/teapot`, `nb/theme` | notebook assets and the page palette | stay notebook-side | — |
+
 ---
 
 ## 5 · Sequencing, and the `p5.tree` consequence
