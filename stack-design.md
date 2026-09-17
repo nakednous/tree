@@ -570,6 +570,7 @@ DOM, media, input → host; GL ceremony over twgl → webgl.tree; panel and layo
 | a reflection matrix (mirror hero) | `T(2a) · S(1, 1, −1)` composed left of every prop | tree: `mat4Reflect(out, plane)` | — |
 | `nb/lines` | a batch of coloured segments rebuilt per frame, drawn as GL lines in one call (skinning's rings, billboards' normal stubs) | webgl.tree: a public `lines` verb over the gizmo line pipe, with the pipe's canvas-pixel width | — |
 | `nb/mesh.planeXY` | a subdivided plane in XY with +z normals, the field a vertex displacement reads in model space | webgl.tree or twgl: an axis option beside twgl's XZ plane; until then notebook-side | — |
+| the morph hero (still on three.js) | a glTF model with morph targets, blended in the vertex stage by a weights uniform; the rest is furniture the modules cover | host media: a glTF loader beside `loadModel` (positions, normals, texcoords, indices, and each morph target's deltas, from the JSON plus the binary buffer) into the arrays shape; the morph vertex stage stays the notebook's, paired with `lit_phong.frag` like displacement's; webgl.tree draws the buffer as any other. Also unlocks the skinning chapter's three.js companion | — |
 | `nb/envmap`, `nb/city`, `nb/teapot`, `nb/theme` | notebook assets and the page palette | stay notebook-side | — |
 
 ---
