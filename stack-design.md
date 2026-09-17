@@ -568,6 +568,8 @@ DOM, media, input → host; GL ceremony over twgl → webgl.tree; panel and layo
 | `nb/source` | 30 stills + a video as one texture per frame | host media: a `createSource` over `loadImage` / `createVideo`; the upload stays the bridge's | — |
 | `nb/tabs` | a deselectable tab strip switching panels | ui: a tab strip primitive | — |
 | a reflection matrix (mirror hero) | `T(2a) · S(1, 1, −1)` composed left of every prop | tree: `mat4Reflect(out, plane)` | — |
+| `nb/lines` | a batch of coloured segments rebuilt per frame, drawn as GL lines in one call (skinning's rings, billboards' normal stubs) | webgl.tree: a public `lines` verb over the gizmo line pipe, with the pipe's canvas-pixel width | — |
+| `nb/mesh.planeXY` | a subdivided plane in XY with +z normals, the field a vertex displacement reads in model space | webgl.tree or twgl: an axis option beside twgl's XZ plane; until then notebook-side | — |
 | `nb/envmap`, `nb/city`, `nb/teapot`, `nb/theme` | notebook assets and the page palette | stay notebook-side | — |
 
 ---
