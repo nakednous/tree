@@ -1412,7 +1412,30 @@ const skin = {
   },
 };
 
-const MODULES = { constants, quat, filter, coast, skin, form, query, track, handle, helm, visibility, camera, gizmo };
+// A unit quad in XY as two triangles, and a tetrahedron corner.
+const MS_QUAD = [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0];
+const MS_TETRA = [0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2];
+const MS_BOUNDS = () => ({ min: [9, 9, 9], max: [9, 9, 9], center: [9, 9, 9], diag: 9 });
+
+const mesh = {
+  functions: {
+    meshNormals: f64([
+      [new Array(12).fill(9), MS_QUAD, [0, 1, 2, 2, 3, 0]],                    // flat: every normal +z, the destination overwritten
+      [new Array(12).fill(0), MS_TETRA, [0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3]], // area-weighted: each face adds its cross product
+      [new Array(9).fill(0), [0, 0, 0, 1, 0, 0, 0, 0, -1]],                    // no indices: every three vertices a triangle
+      [new Array(12).fill(0), MS_QUAD, [0, 1, 2]],                             // vertex 3 unreached: [0, 0, 0]
+      [new Array(9).fill(0), [0, 0, 0, 1, 0, 0, 2, 0, 0], [0, 1, 2]],          // a degenerate triangle: zeros
+      [[], [], []],
+    ]),
+    meshBounds: f64([
+      [MS_BOUNDS(), [-1, 2, 3, 4, -5, 6, 0, 0, 0]],
+      [MS_BOUNDS(), [1, 2, 3]],                                                // one vertex: a point box, diag 0
+      [MS_BOUNDS(), []],                                                       // no positions: zeros
+    ]),
+  },
+};
+
+const MODULES = { constants, quat, filter, coast, skin, mesh, form, query, track, handle, helm, visibility, camera, gizmo };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const [name, spec] of Object.entries(MODULES)) generate(name, spec);

@@ -43,6 +43,7 @@ query.js  — you have a matrix, you want information
 quat.js   — quaternion algebra and mat4/mat3 conversions
 track.js  — spline math and keyframe animation state machines
 skin.js   — sampled clips, pose blending, world matrices and the joint palette of a skeleton
+mesh.js   — vertex normals and bounds of an indexed triangle mesh
 helm.js   — 6-DOF rate-stream integrator — the Track family's live-input sibling
 filter.js — input conditioning: the 1€ filter + absolute→rate differencing
 handle.js — constraint solver + ray primitives for interactive manipulators
@@ -585,6 +586,19 @@ jointPalette(palette, world, skin.joints, skin.inverseBind)   // world(joint) ·
 ```
 
 The palette is what a linear-blend-skinning vertex stage sums, `Σ wᵢ · palette[jointᵢ]`; the world matrices also place rigid meshes and a bone overlay. The clip time is the caller's.
+
+### Mesh — normals and bounds
+
+What a loaded model may lack. Positions are flat xyz, indices flat triangles.
+
+```js
+import { meshNormals, meshBounds } from '@nakednous/tree'
+
+const normals = meshNormals(new Float32Array(positions.length), positions, indices)   // smooth, area-weighted
+const bounds  = meshBounds({ min: [0, 0, 0], max: [0, 0, 0], center: [0, 0, 0], diag: 0 }, positions)
+```
+
+`meshNormals` accumulates each triangle's cross product on its vertices and normalises; without `indices` every three vertices are a triangle. `meshBounds` writes the box corners, their midpoint and the diagonal's length — what a sketch frames and scales a model by. `@nakednous/host`'s `loadModel` runs both.
 
 ### Quaternion and matrix math
 
