@@ -1352,7 +1352,67 @@ const coast = {
   },
 };
 
-const MODULES = { constants, quat, filter, coast, form, query, track, handle, helm, visibility, camera, gizmo };
+// A two-node chain: node 1 a child of node 0. Poses are t3 · q4 · s3 per node.
+const SK_REST = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1,   0, 1, 0, 0, 0, 0, 1, 1, 1, 1];
+const SK_BENT = [1, 2, 3, 0, 0, R2, R2, 2, 2, 2,   0, 1, 0, R2, 0, 0, R2, 1, 1, 1];   // R2 = sin 45°
+const SK_ZERO = () => new Array(20).fill(0);
+const SK_CLIP = {
+  duration: 2,
+  channels: [
+    { node: 0, path: 'translation', interp: 'LINEAR', times: [0, 1, 2], values: [0, 0, 0, 2, 0, 0, 2, 4, 0] },
+    { node: 1, path: 'rotation', interp: 'LINEAR', times: [0, 2], values: [0, 0, 0, 1, 0, 0, 1, 0] },
+    { node: 1, path: 'scale', interp: 'STEP', times: [0.5, 1.5], values: [1, 1, 1, 3, 3, 3] },
+    { node: 0, path: 'weights', interp: 'LINEAR', times: [0, 2], values: [0, 1] },   // not a pose path: skipped
+  ],
+};
+const SK_CUBIC = {
+  duration: 1,
+  channels: [
+    { node: 0, path: 'translation', interp: 'CUBICSPLINE', times: [0, 1],
+      values: [0, 0, 0, 0, 0, 0, 3, 0, 0,   0, 3, 0, 1, 1, 0, 0, 0, 0] },
+    { node: 0, path: 'rotation', interp: 'CUBICSPLINE', times: [0, 1],
+      values: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, R2, R2, 0, 0, 0, 0] },
+  ],
+};
+const SK_WORLD = () => tree.poseWorld(new Array(32).fill(0), SK_BENT, [-1, 0]);
+const SK_IBM = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,   1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1];
+
+const skin = {
+  constants: ['POSE_STRIDE'],
+  functions: {
+    clipSample: f64([
+      [SK_ZERO(), SK_CLIP, 0.25, { rest: SK_REST }],          // linear, slerp, before the step's first key
+      [SK_ZERO(), SK_CLIP, 1, { rest: SK_REST }],             // on a key
+      [SK_ZERO(), SK_CLIP, 1.75, { rest: SK_REST }],          // second segment, the step's last key
+      [SK_ZERO(), SK_CLIP, 2.5, { rest: SK_REST }],           // loop: wraps to 0.5
+      [SK_ZERO(), SK_CLIP, -0.5, { rest: SK_REST }],          // loop: wraps to 1.5
+      [SK_ZERO(), SK_CLIP, 2.5, { rest: SK_REST, loop: false }],   // clamped to the duration
+      [SK_ZERO(), SK_CLIP, -1, { rest: SK_REST, loop: false }],    // clamped to 0
+      [SK_ZERO(), SK_CLIP, 0.25],                             // no rest: only the animated lanes written
+      [SK_ZERO(), SK_CUBIC, 0.5, { rest: SK_REST }],          // cubic spline, the rotation normalised
+      [SK_ZERO(), SK_CUBIC, 0, { rest: SK_REST }],
+      [SK_ZERO(), { duration: 0, channels: SK_CLIP.channels }, 1, { rest: SK_REST }],   // duration 0: t = 0
+      [SK_ZERO(), { duration: 1, channels: [{ node: 0, path: 'scale', interp: 'LINEAR', times: [], values: [] }] }, 0, { rest: SK_REST }],
+    ]),
+    poseBlend: f64([
+      [SK_ZERO(), SK_REST, SK_BENT, 0], [SK_ZERO(), SK_REST, SK_BENT, 1], [SK_ZERO(), SK_REST, SK_BENT, 0.3],
+      [SK_ZERO(), SK_BENT, SK_BENT.map((v, i) => (i % 10 >= 3 && i % 10 < 7 ? -v : v)), 0.5],   // antipodal rotations: the same pose
+      [{ $alias: 1 }, [...SK_REST], SK_BENT, 0.5],
+    ]),
+    poseWorld: f32([
+      [new Array(32).fill(0), SK_REST, [-1, 0]],
+      [new Array(32).fill(0), SK_BENT, [-1, 0]],
+      [new Array(32).fill(0), SK_BENT, [-1, -1]],             // two roots
+    ]),
+    jointPalette: f32([
+      [new Array(32).fill(0), SK_WORLD(), [0, 1], SK_IBM],
+      [new Array(16).fill(0), SK_WORLD(), [1], SK_IBM.slice(16)],   // a skin over one joint
+      [[], SK_WORLD(), [], []],
+    ]),
+  },
+};
+
+const MODULES = { constants, quat, filter, coast, skin, form, query, track, handle, helm, visibility, camera, gizmo };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const [name, spec] of Object.entries(MODULES)) generate(name, spec);

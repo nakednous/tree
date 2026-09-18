@@ -42,6 +42,7 @@ form.js   — you have specs, you want a matrix
 query.js  — you have a matrix, you want information
 quat.js   — quaternion algebra and mat4/mat3 conversions
 track.js  — spline math and keyframe animation state machines
+skin.js   — sampled clips, pose blending, world matrices and the joint palette of a skeleton
 helm.js   — 6-DOF rate-stream integrator — the Track family's live-input sibling
 filter.js — input conditioning: the 1€ filter + absolute→rate differencing
 handle.js — constraint solver + ray primitives for interactive manipulators
@@ -563,6 +564,28 @@ Every generator is snprintf-style: it returns the count it needs, writes what fi
 
 ---
 
+### Skin — clips, poses and the joint palette
+
+The numeric side of a skinned, animated skeleton. A pose is one flat buffer, `POSE_STRIDE` (10) numbers per node — translation, rotation `[x,y,z,w]`, scale, local to the parent; a hierarchy is a `parents` array, −1 for a root, parents first. A clip is `{ duration, channels }`, each channel `{ node, path, times, values, interp }` with `path` one of `'translation' | 'rotation' | 'scale'` and `interp` one of `'STEP' | 'LINEAR' | 'CUBICSPLINE'` — the animation model of glTF 2.0, which `@nakednous/host`'s `loadModel` delivers in this shape.
+
+```js
+import { clipSample, poseBlend, poseWorld, jointPalette, POSE_STRIDE } from '@nakednous/tree'
+
+const pose    = new Float32Array(nodes.rest.length)
+const next    = new Float32Array(nodes.rest.length)
+const world   = new Float32Array(16 * nodes.parents.length)
+const palette = new Float32Array(16 * skin.joints.length)
+
+// per frame — nothing allocates
+clipSample(pose, walk, t, { rest: nodes.rest })      // loops by default; { loop: false } clamps
+clipSample(next, run,  t, { rest: nodes.rest })
+poseBlend(pose, pose, next, fade)                    // a cross-fade: lerp · nlerp · lerp
+poseWorld(world, pose, nodes.parents)                // world(i) = world(parent) · local(i)
+jointPalette(palette, world, skin.joints, skin.inverseBind)   // world(joint) · inverseBind
+```
+
+The palette is what a linear-blend-skinning vertex stage sums, `Σ wᵢ · palette[jointᵢ]`; the world matrices also place rigid meshes and a bone overlay. The clip time is the caller's.
+
 ### Quaternion and matrix math
 
 Exported individually for use in hot paths.
@@ -707,6 +730,14 @@ The fixture format is specified in `tools/golden.js`. A function without a fixtu
 The bridges are where rendering lives. [p5.tree](https://github.com/VisualComputing/p5.tree) reads live p5 renderer state (camera matrices, viewport, NDC convention) into the host's view bag and draws the gizmo arrays with p5's own strokes; `webgl.tree` installs the camera, uploads the declared transforms and draws the same arrays through a line pipe on raw WebGL2; `webgpu.tree` realizes the same surface on WebGPU. Between them sits [`@nakednous/host`](https://github.com/nakednous/host): the pointer, the players, the handles, helms and tracks, the device streams, labels and the orbit — DOM transport, no renderer — which every bridge drives and which computes only through this package.
 
 `@nakednous/tree` provides the algorithms, `@nakednous/host` the transport, `@nakednous/ui` the panels. The bridges provide the drawing.
+
+---
+
+## Acknowledgements
+
+- [glTF 2.0](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html) (Khronos Group) — the animation model `skin.js` samples (channel paths, `STEP` / `LINEAR` / `CUBICSPLINE` interpolation, the cubic spline key layout), the joint-matrix equation, and the `[x,y,z,w]` quaternion layout.
+- [three.js](https://threejs.org/) — `qFromUnitVectors` follows its `setFromUnitVectors`; the camera keyframes' `near` / `far` defaults follow its conventions.
+- [twgl](https://twgljs.org/) — the arrays shape the gizmo generators write.
 
 ---
 
