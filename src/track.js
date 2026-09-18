@@ -1192,9 +1192,10 @@ export class CameraTrack extends Track {
   /**
    * Evaluate interpolated camera pose at current cursor.
    *
-   * `fov` / `halfHeight` are lerped only when both adjacent keyframes carry
-   * a non-null value; mixed entries pass `null` through so the bridge can
-   * leave the projection unchanged.
+   * `fov` / `halfHeight` are lerped between keyframes of one lens kind. Across
+   * a perspective ↔ orthographic segment the lens steps: the segment's first
+   * keyframe's until its end, then the second's — so exactly one of the two
+   * is ever set, and both are null only when both keyframes leave them so.
    *
    * `near` / `far` are always real numbers and are linearly interpolated
    * unconditionally.
@@ -1225,11 +1226,16 @@ export class CameraTrack extends Track {
 
     this._sampleEyePose(out, seg, t);
 
-    out.fov = (k0.fov != null && k1.fov != null)
-      ? k0.fov + t * (k1.fov - k0.fov) : (k0.fov ?? k1.fov ?? null);
-    out.halfHeight = (k0.halfHeight != null && k1.halfHeight != null)
-      ? k0.halfHeight + t * (k1.halfHeight - k0.halfHeight)
-      : (k0.halfHeight ?? k1.halfHeight ?? null);
+    // The lens: lerped between keyframes of one kind; across a perspective ↔
+    // orthographic segment it steps — k0's until the segment's end, then k1's —
+    // so exactly one of fov / halfHeight is ever set.
+    if ((k0.fov != null) !== (k1.fov != null) || (k0.halfHeight != null) !== (k1.halfHeight != null)) {
+      const k = t >= 1 ? k1 : k0;
+      out.fov = k.fov; out.halfHeight = k.halfHeight;
+    } else {
+      out.fov = k0.fov != null ? k0.fov + t * (k1.fov - k0.fov) : null;
+      out.halfHeight = k0.halfHeight != null ? k0.halfHeight + t * (k1.halfHeight - k0.halfHeight) : null;
+    }
 
     // near / far carry real defaults on every keyframe — always lerp.
     out.near = k0.near + t * (k1.near - k0.near);

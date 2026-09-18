@@ -778,7 +778,8 @@ const track = {
       { call: 'add', args: [{ eye: [5, 5, 5], center: [1, 1, 1], halfHeight: 2 }] },
       { call: 'add', args: [{ eye: [5, 0, 5], halfHeight: 4, near: 2, far: 20 }] },
       { call: 'seek', args: [0.5, 0] }, { call: 'eval' },                            // both fov: lerped
-      { call: 'seek', args: [0.5, 1] }, { call: 'eval' },                            // mixed: the non-null value passes through
+      { call: 'seek', args: [0.5, 1] }, { call: 'eval' },                            // mixed lens kinds: the segment's first keyframe's lens
+      { call: 'seek', args: [1, 1] }, { call: 'eval' },                              // … until the segment's end, then the second's
       { call: 'seek', args: [0.5, 2] }, { call: 'eval' },                            // both halfHeight: lerped
       { call: 'seek', args: [1] }, { call: 'eval' },
       { call: 'seek', args: [0] }, { call: 'play', args: [{ duration: 2 }] }, { call: 'tick' }, { call: 'eval' }, { call: 'info' },   // shared transport

@@ -869,9 +869,22 @@
             "center": [0.5, 0.5, 0.5],
             "up": [0.7071067811865475, 0.7071067811865475, 0],
             "fov": 1.5707963267948966,
-            "halfHeight": 2,
+            "halfHeight": null,
             "near": 0.55,
             "far": 600
+          }
+        },
+        {"call": "seek", "args": [1, 1]},
+        {
+          "call": "eval",
+          "expect": {
+            "eye": [5, 5, 5],
+            "center": [1, 1, 1],
+            "up": [0, 1, 0],
+            "fov": null,
+            "halfHeight": 2,
+            "near": 0.09999999999999998,
+            "far": 1000
           }
         },
         {"call": "seek", "args": [0.5, 2]},

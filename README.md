@@ -174,7 +174,7 @@ track.add([ spec, spec, ... ])     // bulk
 
 For matrix-based capture use `track.add({ mat4Model: mat4Eye })` for full-fidelity TRS including roll, or `cam.capturePose()` (p5.tree bridge) for lookat-style capture.
 
-`fov` and `halfHeight` are lerped between keyframes only when both adjacent keyframes carry a non-null value for that field. Mixed or null entries pass `null` through — the bridge leaves the projection unchanged. They are nullable because exactly one is meaningful per keyframe (perspective xor orthographic).
+`fov` and `halfHeight` are nullable because exactly one is meaningful per keyframe (perspective xor orthographic). Between keyframes of one kind the lens is lerped; across a perspective ↔ orthographic segment it steps — the segment's first keyframe's lens until its end, then the second's — so `eval` never reports both.
 
 `near` and `far` carry real defaults on every keyframe (`0.1` / `1000`, matching the three.js / Bevy conventions) and are therefore lerped linearly between every adjacent pair — no null-passthrough. `cam.capturePose()` extracts them from the camera's own projection matrix (not the renderer's live state), so a round-trip through `add(cam.capturePose())` is exact regardless of which camera is currently active on the renderer.
 
