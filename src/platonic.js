@@ -4,8 +4,9 @@
  * @license AGPL-3.0-only
  *
  * A solid is a mesh: built once, at setup, in the shape twgl's primitives and
- * a loaded model's meshes share — { position, normal, texcoord, color,
- * indices } — so a bridge uploads it as it uploads those. All five are
+ * a loaded mesh share — { position, normal, texcoord, color, indices }, with
+ * its `bounds` beside them as a loaded mesh has — so a bridge uploads it as it
+ * uploads those. All five are
  * inscribed in one sphere: `radius` is the circumradius, so duals nest and a
  * bound is the radius. The edge follows from it — radius times √(8/3), 2/√3,
  * √2, (√5 − 1)/√3 and 1/sin(2π/5), tetrahedron to icosahedron.
@@ -82,6 +83,7 @@
 
 'use strict';
 
+import { meshBounds } from './mesh.js';
 import { TETRAHEDRON, HEXAHEDRON, OCTAHEDRON, DODECAHEDRON, ICOSAHEDRON, COLOR_X, COLOR_Y, COLOR_Z } from './constants.js';
 
 const PHI = (1 + Math.sqrt(5)) / 2;
@@ -191,7 +193,8 @@ function _faces(kind) {
  *        (√5 − 1)/√3, 1/sin(2π/5) by kind. uvs: default 'face'.
  * @returns {{ position:{numComponents:number,data:Float32Array}, normal:{numComponents:number,data:Float32Array},
  *             texcoord:{numComponents:number,data:Float32Array}, color:{numComponents:number,data:Float32Array},
- *             indices:{numComponents:number,data:Uint16Array} }|null} null for an unknown kind.
+ *             indices:{numComponents:number,data:Uint16Array},
+ *             bounds:{min:number[],max:number[],center:number[],diag:number} }|null} null for an unknown kind.
  */
 export function platonic(kind, opts) {
   if (!_SOLIDS[kind]) return null;
@@ -235,5 +238,6 @@ export function platonic(kind, opts) {
     position: { numComponents: 3, data: position }, normal: { numComponents: 3, data: normal },
     texcoord: { numComponents: 2, data: texcoord }, color: { numComponents: 4, data: color },
     indices: { numComponents: 3, data: indices },
+    bounds: meshBounds({ min: [0, 0, 0], max: [0, 0, 0], center: [0, 0, 0], diag: 0 }, position),
   };
 }

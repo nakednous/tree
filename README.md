@@ -617,7 +617,7 @@ const bounds = meshBounds({ min: [0, 0, 0], max: [0, 0, 0], center: [0, 0, 0], d
 
 ### Platonic solids
 
-The five regular polyhedra as meshes, in the arrays shape twgl's primitives and a loaded model's meshes share — `{ position, normal, texcoord, color, indices }` — so a bridge uploads one as it uploads those. A setup-time call; every face owns its vertices (flat normals), fan-triangulated through the indices.
+The five regular polyhedra as meshes, in the arrays shape twgl's primitives and a loaded mesh share — `{ position, normal, texcoord, color, indices }`, with `bounds` beside them as `@nakednous/host`'s `loadMesh` gives — so a bridge uploads one as it uploads those. A setup-time call; every face owns its vertices (flat normals), fan-triangulated through the indices.
 
 ```js
 import { platonic, ICOSAHEDRON, HEXAHEDRON } from '@nakednous/tree'
