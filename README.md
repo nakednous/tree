@@ -44,6 +44,7 @@ quat.js   — quaternion algebra and mat4/mat3 conversions
 track.js  — spline math and keyframe animation state machines
 skin.js   — sampled clips, pose blending, world matrices and the joint palette of a skeleton
 mesh.js   — vertex normals and bounds of an indexed triangle mesh
+platonic.js — the five Platonic solids as meshes in the arrays shape
 helm.js   — 6-DOF rate-stream integrator — the Track family's live-input sibling
 filter.js — input conditioning: the 1€ filter + absolute→rate differencing
 handle.js — constraint solver + ray primitives for interactive manipulators
@@ -600,6 +601,31 @@ const bounds  = meshBounds({ min: [0, 0, 0], max: [0, 0, 0], center: [0, 0, 0], 
 
 `meshNormals` accumulates each triangle's cross product on its vertices and normalises; without `indices` every three vertices are a triangle. `meshBounds` writes the box corners, their midpoint and the diagonal's length — what a sketch frames and scales a model by. `@nakednous/host`'s `loadModel` runs both.
 
+### Platonic solids
+
+The five regular polyhedra as meshes, in the arrays shape twgl's primitives and a loaded model's meshes share — `{ position, normal, texcoord, color, indices }` — so a bridge uploads one as it uploads those. A setup-time call; every face owns its vertices (flat normals), fan-triangulated through the indices.
+
+```js
+import { platonic, ICOSAHEDRON, HEXAHEDRON } from '@nakednous/tree'
+
+const ico  = platonic(ICOSAHEDRON, { radius: 80 })
+const dice = platonic(HEXAHEDRON, { radius: 60, colors: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], fuse: true })
+// webgl.tree: buffer(gl, ico) — exactly as buffer(gl, twgl.primitives.createSphereVertices(80, 24, 16))
+```
+
+| Kind (its face count) | Vertices | Edge, for a circumradius of 1 |
+|---|---|---|
+| `TETRAHEDRON` 4 | 12 | √(8/3) |
+| `HEXAHEDRON` 6 | 24 | 2/√3 |
+| `OCTAHEDRON` 8 | 24 | √2 |
+| `DODECAHEDRON` 12 | 60 | (√5 − 1)/√3 |
+| `ICOSAHEDRON` 20 | 60 | 1/sin(2π/5) |
+
+- `radius` (default 100) is the **circumradius**: all five inscribe in one sphere, so duals nest and a bound is the radius.
+- `uvs: 'face'` (default) fits every face's polygon in the unit square, upright and unstretched — each face shows the whole texture, a hexahedron's exactly. `uvs: 'sphere'` is the equirectangular map, each face unwrapped around its own centre so none straddles the seam (u may leave [0, 1]: set the texture to repeat in u); a vertex at a pole takes its face's u.
+- `colors`, a list of `[r, g, b, a?]`, is cycled per face — or per solid vertex with `fuse`, so faces blend at shared corners. Without it a face is coloured by its orientation, `nx² · COLOR_X + ny² · COLOR_Y + nz² · COLOR_Z`: a hexahedron shows the axis palette exactly.
+- Faces are derived from the dual solid — a face's normal is a dual vertex direction — so regularity holds by construction. Texture coordinates run v up.
+
 ### Quaternion and matrix math
 
 Exported individually for use in hot paths.
@@ -751,7 +777,8 @@ The bridges are where rendering lives. [p5.tree](https://github.com/VisualComput
 
 - [glTF 2.0](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html) (Khronos Group) — the animation model `skin.js` samples (channel paths, `STEP` / `LINEAR` / `CUBICSPLINE` interpolation, the cubic spline key layout), the joint-matrix equation, and the `[x,y,z,w]` quaternion layout.
 - [three.js](https://threejs.org/) — `qFromUnitVectors` follows its `setFromUnitVectors`; the camera keyframes' `near` / `far` defaults follow its conventions.
-- [twgl](https://twgljs.org/) — the arrays shape the gizmo generators write.
+- [twgl](https://twgljs.org/) — the arrays shape the gizmo generators and `platonic` write.
+- [p5.platonic](https://github.com/VisualComputing/p5.platonic) (JP Charalambos) — `platonic.js` descends from it: the five solids, colouring per face or per fused vertex.
 
 ---
 

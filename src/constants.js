@@ -96,3 +96,10 @@ export const COLOR_X   = Object.freeze([1, 0, 0, 1]);
 export const COLOR_Y   = Object.freeze([0, 1, 0, 1]);
 export const COLOR_Z   = Object.freeze([30 / 255, 144 / 255, 1, 1]);
 export const COLOR_DIM = 110 / 255;
+
+// Platonic solids — the kind is the face count.
+export const TETRAHEDRON  = 4;
+export const HEXAHEDRON   = 6;
+export const OCTAHEDRON   = 8;
+export const DODECAHEDRON = 12;
+export const ICOSAHEDRON  = 20;

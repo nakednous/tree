@@ -265,6 +265,7 @@ const constants = {
     'TRANSLATE', 'ROTATE',
     'HANDLE', 'AIM', 'LOCUS', 'RING',
     'COLOR_X', 'COLOR_Y', 'COLOR_Z', 'COLOR_DIM',
+    'TETRAHEDRON', 'HEXAHEDRON', 'OCTAHEDRON', 'DODECAHEDRON', 'ICOSAHEDRON',
   ],
 };
 
@@ -1436,7 +1437,22 @@ const mesh = {
   },
 };
 
-const MODULES = { constants, quat, filter, coast, skin, mesh, form, query, track, handle, helm, visibility, camera, gizmo };
+const platonic = {
+  functions: {
+    platonic: f32([
+      [tree.TETRAHEDRON], [tree.HEXAHEDRON], [tree.OCTAHEDRON], [tree.DODECAHEDRON], [tree.ICOSAHEDRON],   // radius 100, 'face' uvs, colour by orientation
+      [tree.HEXAHEDRON, { radius: 1, uvs: 'sphere' }],                          // the faces on the poles unwrap vertex to vertex
+      [tree.OCTAHEDRON, { radius: 1, uvs: 'sphere' }],                          // vertices on the poles take their face's u
+      [tree.ICOSAHEDRON, { radius: 2, uvs: 'sphere' }],                         // faces across the seam unwrap around their centre
+      [tree.TETRAHEDRON, { colors: [[1, 0, 0], [0, 1, 0, 0.5]] }],              // cycled per face; a missing alpha is 1
+      [tree.HEXAHEDRON, { colors: [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]], fuse: true }],   // cycled per solid vertex
+      [tree.DODECAHEDRON, { colors: [] }],                                      // an empty list: colour by orientation
+      [5], [undefined],                                                         // not a kind: null
+    ]),
+  },
+};
+
+const MODULES = { constants, quat, filter, coast, skin, mesh, platonic, form, query, track, handle, helm, visibility, camera, gizmo };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const [name, spec] of Object.entries(MODULES)) generate(name, spec);
