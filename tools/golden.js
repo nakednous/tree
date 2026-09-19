@@ -1417,6 +1417,8 @@ const skin = {
 // A unit quad in XY as two triangles, and a tetrahedron corner.
 const MS_QUAD = [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0];
 const MS_TETRA = [0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2];
+// Two triangles over a fold along the x = 1 edge, sharing no vertex: (1,0,0) and (1,1,0) appear twice.
+const MS_FOLD = [0, 0, 0, 1, 0, 0, 1, 1, 0,   1, 1, 0, 1, 0, 0, 2, 0.5, 1];
 const MS_BOUNDS = () => ({ min: [9, 9, 9], max: [9, 9, 9], center: [9, 9, 9], diag: 9 });
 
 const mesh = {
@@ -1428,6 +1430,24 @@ const mesh = {
       [new Array(12).fill(0), MS_QUAD, [0, 1, 2]],                             // vertex 3 unreached: [0, 0, 0]
       [new Array(9).fill(0), [0, 0, 0, 1, 0, 0, 2, 0, 0], [0, 1, 2]],          // a degenerate triangle: zeros
       [[], [], []],
+      // a quad drawn as two triangles that share no vertex: alone each corner keeps its own face; grouped, the two on the fold blend
+      [new Array(18).fill(0), MS_FOLD, null, {}],
+      [new Array(18).fill(0), MS_FOLD, null, { groups: [0, 1, 2, 2, 1, 5] }],
+      [new Array(12).fill(0), MS_QUAD, [0, 1, 2, 2, 3, 0], { groups: [0, 1, 2, 3] }],   // every vertex its own group: as without
+    ]),
+    meshGroups: exact([
+      [new Array(6).fill(-1), MS_FOLD, 1e-6],                                  // exact duplicates meet
+      [new Array(3).fill(-1), [0, 0, 0, 0.4e-3, 0, 0, 1, 0, 0], 1e-3],         // within a cell
+      [new Array(2).fill(-1), [0.49e-3, 0, 0, 0.51e-3, 0, 0], 1e-3],           // closer than eps, either side of a cell boundary: apart
+      [new Array(3).fill(-1), [0, 0, 0, 0, 0, 0, 1e-9, 0, 0], 0],              // eps 0: exact duplicates only
+      [[], [], 1e-3],
+    ]),
+    meshFlatten: f64([
+      [{ position: { numComponents: 3, data: MS_QUAD }, texcoord: { numComponents: 2, data: [0, 0, 1, 0, 1, 1, 0, 1] },
+         indices: { numComponents: 3, data: [0, 1, 2, 2, 3, 0] }, bounds: { diag: 1 } }],           // attributes expanded, other keys kept
+      [{ position: { numComponents: 3, data: [0, 0, 5, 0, 0, 6, 0, 0, 7, 0, 0, 8] } }, [3, 2, 1]],  // indices given: a morph target's deltas
+      [{ position: { numComponents: 3, data: [1, 2, 3] } }],                                         // no indices anywhere: a copy
+      [{}],
     ]),
     meshBounds: f64([
       [MS_BOUNDS(), [-1, 2, 3, 4, -5, 6, 0, 0, 0]],

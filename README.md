@@ -43,7 +43,7 @@ query.js  — you have a matrix, you want information
 quat.js   — quaternion algebra and mat4/mat3 conversions
 track.js  — spline math and keyframe animation state machines
 skin.js   — sampled clips, pose blending, world matrices and the joint palette of a skeleton
-mesh.js   — vertex normals and bounds of an indexed triangle mesh
+mesh.js   — vertex normals (smooth, grouped, flat), flattening and bounds of a triangle mesh
 platonic.js — the five Platonic solids as meshes in the arrays shape
 helm.js   — 6-DOF rate-stream integrator — the Track family's live-input sibling
 filter.js — input conditioning: the 1€ filter + absolute→rate differencing
@@ -588,18 +588,32 @@ jointPalette(palette, world, skin.joints, skin.inverseBind)   // world(joint) ·
 
 The palette is what a linear-blend-skinning vertex stage sums, `Σ wᵢ · palette[jointᵢ]`; the world matrices also place rigid meshes and a bone overlay. The clip time is the caller's.
 
-### Mesh — normals and bounds
+### Mesh — normals, groups, flattening, bounds
 
-What a loaded model may lack. Positions are flat xyz, indices flat triangles.
+What a loaded model may lack or need changed. Positions are flat xyz, indices flat triangles.
 
 ```js
-import { meshNormals, meshBounds } from '@nakednous/tree'
+import { meshNormals, meshGroups, meshFlatten, meshBounds } from '@nakednous/tree'
 
-const normals = meshNormals(new Float32Array(positions.length), positions, indices)   // smooth, area-weighted
-const bounds  = meshBounds({ min: [0, 0, 0], max: [0, 0, 0], center: [0, 0, 0], diag: 0 }, positions)
+// smooth: triangles share their vertices
+meshNormals(normals, positions, indices)
+
+// smooth across vertices that coincide — a faceted file, a texture seam
+const groups = meshGroups(new Int32Array(positions.length / 3), positions, 1e-6 * bounds.diag)   // once
+meshNormals(normals, positions, indices, { groups })                                            // per frame if the mesh deforms
+
+// flat: every triangle owns its vertices
+const flat = meshFlatten(mesh)                                     // a new mesh, every attribute expanded
+flat.normal = { numComponents: 3, data: meshNormals(new Float32Array(flat.position.data.length), flat.position.data, flat.indices.data) }
+
+const bounds = meshBounds({ min: [0, 0, 0], max: [0, 0, 0], center: [0, 0, 0], diag: 0 }, positions)
 ```
 
-`meshNormals` accumulates each triangle's cross product on its vertices and normalises; without `indices` every three vertices are a triangle. `meshBounds` writes the box corners, their midpoint and the diagonal's length — what a sketch frames and scales a model by. `@nakednous/host`'s `loadModel` runs both.
+**One routine gives both looks**, because the difference is in the mesh, not in the formula. `meshNormals` sums on every vertex the cross product of each triangle that uses it — the face normal scaled by twice the face's area, so large faces weigh more — and normalises. Where triangles share vertices the sum is the smooth normal; where every triangle owns its three (`meshFlatten`) each sum has one term, the face normal. `meshGroups` finds the vertices that coincide — positions rounded to a grid of `eps`, hashed — and `meshNormals`, given the groups, sums per position and hands every member the result; the mesh is untouched, unlike a weld, which would merge vertices a seam duplicates on purpose. `meshBounds` writes the box corners, their midpoint and the diagonal's length — what a sketch frames and scales a model by: `s = size / bounds.diag` fits any file to `size`. `@nakednous/host`'s loaders run all of these.
+
+**Limits.** No crease angle: grouping smooths every edge, so a box shades like a pillow — flatten it instead. Grouping is by grid cell: exact duplicates, what files hold, always meet; two points closer than `eps` but either side of a cell boundary do not. A vertex no triangle reaches, or whose triangles cancel, gets `[0, 0, 0]`. `meshFlatten` multiplies the vertex count by up to six, and allocates, as `meshGroups` does; `meshNormals` and `meshBounds` do not.
+
+**Sources.** Area-weighted vertex normals from unnormalised face cross products, and de-indexing for flat shading, are standard practice; smoothing coincident vertices by position hashing is the usual alternative to welding. Keeping the groups as a reusable index array beside an untouched mesh is this module's arrangement.
 
 ### Platonic solids
 
