@@ -40,8 +40,8 @@
  *                        helm produced last frame ⇒ equals the integrated `q`,
  *                        zero staleness); rotating a body delta through `q` then
  *                        world-composing is algebraically a body-frame compose.
- *   - screen-relative  — basis is the *viewing* camera's eye matrix (an external
- *                        frame); a push moves the target relative to the screen.
+ *   - view-relative    — basis is the *viewing* camera's eye matrix (an external
+ *                        frame); a push moves the target relative to the view.
  *
  * Per-channel `from` ({ translation, rotation }) is a deferred, non-breaking
  * extension (one basis suffices today — pose-helm-design.md §8.3).

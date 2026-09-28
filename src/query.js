@@ -28,16 +28,18 @@
  * ── Viewport convention ───────────────────────────────────────────────────
  * vp = [x, y, w, h] — w and h are SIGNED.
  *
- * The sign of h encodes the relationship between NDC y and screen y:
- *   h < 0 (e.g. −canvasH): screen y-DOWN  (DOM / p5 mouseX·mouseY / Vulkan surface)
- *                            NDC y=+1 → screen y=0  (top)
- *                            NDC y=−1 → screen y=H  (bottom)
- *   h > 0 (e.g. +canvasH): screen y-UP   (OpenGL desktop / WebGL gl_FragCoord)
- *                            NDC y=−1 → screen y=0  (bottom)
- *                            NDC y=+1 → screen y=H  (top)
+ * The sign of h names the space the pixels are in:
+ *   h < 0 (e.g. −canvasH): CANVAS SPACE — the surface's logical pixels,
+ *                            top-left, y down: what a DOM offset, p5's
+ *                            mouseX·mouseY, a pointer, labels and the HUD
+ *                            count. NDC y=+1 → y=0 (top);  NDC y=−1 → y=H
+ *   h > 0 (e.g. +canvasH): WINDOW SPACE — the graphics API's, the drawing
+ *                            buffer's device pixels, bottom-left, y up: what
+ *                            gl_FragCoord, readPixel and uResolution count.
+ *                            NDC y=−1 → y=0 (bottom);  NDC y=+1 → y=H (top)
  *
- * Pass [0, canvasH, canvasW, −canvasH] for p5/DOM coordinates.
- * Pass [0, 0, canvasW, canvasH] for WebGL gl_FragCoord / OpenGL bottom-left.
+ * Pass [0, canvasH, canvasW, −canvasH] for canvas space (p5 / DOM coordinates).
+ * Pass [0, 0, canvasW, canvasH] for window space (gl_FragCoord, GL's bottom-left).
  * All helpers use vp[2]/vp[3] signed — no Math.abs — so both conventions
  * work automatically without any branching.
  *
@@ -292,10 +294,10 @@ export function mat3Direction(out, from, to) {
 //   toFrameInv? Float32Array(16)  inv(MATRIX dest frame)
 //
 // Viewport `vp` = [x, y, w, h]:
-//   Use SIGNED h to encode screen-y direction (see module header).
-//   Core formula: screen = (ndc*0.5+0.5)*vp[k] + vp[k-2]  (k=2 for x, k=3 for y)
-//   Inverse:      ndc    = ((screen-vp[k-2])/vp[k])*2 - 1
-//   Negative vp[3] flips NDC y-up to screen y-down automatically.
+//   Use SIGNED h to name the space (see module header).
+//   Core formula: px = (ndc*0.5+0.5)*vp[k] + vp[k-2]  (k=2 for x, k=3 for y)
+//   Inverse:      ndc = ((px-vp[k-2])/vp[k])*2 - 1
+//   Negative vp[3] flips NDC y-up into canvas space's y-down automatically.
 //
 
 // ── Location helpers ─────────────────────────────────────────────────────
@@ -356,7 +358,7 @@ function _ensurePV(m) {
  * @param {string}   from    Source space (WORLD, EYE, SCREEN, NDC, MATRIX).
  * @param {string}   to      Destination space.
  * @param {object}   m       Matrices bag — see module header.
- * @param {number[]} vp      Viewport [x, y, w, h]; sign of h encodes screen-y direction.
+ * @param {number[]} vp      Viewport [x, y, w, h]; sign of h names the space — negative: canvas space (logical pixels, top-left, y down); positive: window space (device pixels, bottom-left, y up).
  * @param {number}   ndcZMin WEBGL (−1) or WEBGPU (0).
  * @returns {number[]} out
  */
@@ -497,7 +499,7 @@ function _ndcToScreenDir(out, dx, dy, dz, vpW, vpH, ndcZMin) {
  * @param {string}   from    Source space.
  * @param {string}   to      Destination space.
  * @param {object}   m       Matrices bag — see module header.
- * @param {number[]} vp      Viewport [x, y, w, h]; sign of h encodes screen-y direction.
+ * @param {number[]} vp      Viewport [x, y, w, h]; sign of h names the space — negative: canvas space (logical pixels, top-left, y down); positive: window space (device pixels, bottom-left, y up).
  * @param {number}   ndcZMin WEBGL (−1) or WEBGPU (0).
  * @returns {number[]} out
  */
@@ -588,15 +590,16 @@ export function mapDirection(out, dx, dy, dz, from, to, m, vp, ndcZMin) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Screen point → world ray: origin on the near plane (screen depth 0), unit
- * direction toward the far plane (depth 1). Same bag and viewport contract as
- * mapLocation; `m.mat4PVInv` must be filled by the caller.
+ * A point in the SCREEN space — canvas or window, by the viewport's sign — to a
+ * world ray: origin on the near plane (depth 0), unit direction toward the far
+ * plane (depth 1). Same bag and viewport contract as mapLocation;
+ * `m.mat4PVInv` must be filled by the caller.
  *
  * @param {number[]} outO    3-element origin.
  * @param {number[]} outD    3-element unit direction.
- * @param {number}   sx,sy   Screen point.
+ * @param {number}   sx,sy   Point in the SCREEN space — canvas or window, by the viewport's sign.
  * @param {object}   m       Matrices bag — see module header.
- * @param {number[]} vp      Viewport [x, y, w, h]; sign of h encodes screen-y direction.
+ * @param {number[]} vp      Viewport [x, y, w, h]; sign of h names the space — negative: canvas space (logical pixels, top-left, y down); positive: window space (device pixels, bottom-left, y up).
  * @param {number}   ndcZMin WEBGL (−1) or WEBGPU (0).
  * @returns {number[]|null} outD, or null when the bag carries no mat4PVInv
  *                          (singular P·V) or the ray has no length.
@@ -613,19 +616,19 @@ export function unproject(outO, outD, sx, sy, m, vp, ndcZMin) {
   return outD;
 }
 
-const _hit = [0, 0, 0];   // pointerHit screen scratch
+const _hit = [0, 0, 0];   // pointerHit pixel scratch
 
 /**
  * Is the pointer within `radius` px of the projected world point (x, y, z)?
  * `shape` is CIRCLE (Euclidean, default) or SQUARE (Chebyshev); the boundary
- * hits. A point whose screen depth falls outside [0, 1] — behind the camera,
+ * hits. A point whose window depth falls outside [0, 1] — behind the camera,
  * before the near plane or beyond the far plane — never hits.
  *
- * @param {number}   px,py   Pointer, screen px.
+ * @param {number}   px,py   Pointer, in the same space as vp (canvas pixels for a DOM pointer).
  * @param {number}   x,y,z   World point.
- * @param {number}   radius  Hit radius, px.
+ * @param {number}   radius  Hit radius, in that space's pixels.
  * @param {object}   m       Matrices bag — see module header.
- * @param {number[]} vp      Viewport [x, y, w, h]; sign of h encodes screen-y direction.
+ * @param {number[]} vp      Viewport [x, y, w, h]; sign of h names the space — negative: canvas space (logical pixels, top-left, y down); positive: window space (device pixels, bottom-left, y up).
  * @param {number}   ndcZMin WEBGL (−1) or WEBGPU (0).
  * @param {number}   [shape=CIRCLE]  CIRCLE or SQUARE.
  * @returns {boolean}
@@ -666,7 +669,7 @@ export function pixelRatio(proj, vpH, eyeZ, ndcZMin) {
  * NDC cube in the viewport rectangle and carries NDC depth into [0, 1].
  *
  *   ┌ w/2   0     0      x + w/2 ┐
- *   │  0   h/2    0      y + h/2 │     vp = [x, y, w, h], h < 0 for screen y-down
+ *   │  0   h/2    0      y + h/2 │     vp = [x, y, w, h], h < 0 for canvas space
  *   │  0    0   1/(1−n)  −n/(1−n) │     n = ndcZMin
  *   └  0    0     0         1    ┘
  *
@@ -699,7 +702,7 @@ export function mat4Viewport(out, vp, ndcZMin) {
  *   └   0   0   0    1 ┘     tx = −cx·sx,  ty = −cy·sy
  *
  * Result: P_pick = M_pick · P_original.
- * The viewport sign convention (vp[3] < 0 for screen y-down) is preserved
+ * The viewport sign convention (vp[3] < 0 for canvas space) is preserved
  * automatically through cx/cy — no separate flip needed.
  *
  * @param {Float32Array} proj  Projection mat4 — mutated in place.

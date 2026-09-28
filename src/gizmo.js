@@ -41,7 +41,7 @@
  *
  * ── Frames ─────────────────────────────────────────────────────────────────
  * A generator writes in the frame the caller means — model space for scene
- * gizmos (the bridge's M places them), screen pixels for HUD gizmos.
+ * gizmos (the bridge's M places them), canvas pixels for HUD gizmos.
  * Nothing here consults a camera except locusLines and frustumLines, which
  * take what they need explicitly. Signatures: out first, the subject second
  * where there is one, options last.

@@ -26,10 +26,12 @@
  * mat4View, mat4Eye, and all non-projection constructors are convention-
  * agnostic — they produce the same matrix regardless of the NDC y direction.
  *
- * ── Screen Y convention ───────────────────────────────────────────────────
- * Screen-y direction (DOM y-down vs OpenGL y-up) is a separate concern from
- * NDC-y direction and is handled in query.js via the signed viewport height.
- * See the query.js module header for details.
+ * ── Canvas vs window y ─────────────────────────────────────────────────────
+ * The pixel grid's y direction — canvas space's y-down (a DOM offset, p5's
+ * mouseX·mouseY) against window space's y-up (the drawing buffer, GL's
+ * gl_FragCoord) — is a separate concern from NDC-y direction and is handled
+ * in query.js via the signed viewport height. See the query.js module header
+ * for details.
  *
  * All functions follow the out-first, zero-allocation contract. The
  * allocators mat4, mat3 and vec3 make that storage — once, at setup — so a

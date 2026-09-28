@@ -349,12 +349,12 @@ helm.profile = {
 
 ```
 WORLD    the world-aligned eye frame — the identity basis (forward −Z; step's basis is null)
-EYE      a viewing camera's frame — screen-relative (default)
+EYE      a viewing camera's frame — view-relative (default)
 SELF     the helm's OWN evolving pose — body-relative
 <mat4>   an explicit fixed frame
 ```
 
-`step` rotates both linear and angular rates through `basis`, then composes the quaternion world-frame — one code path covering body-fly and screen-relative manipulation. `SELF` is body-relative (a per-frame-rebuilt pose matrix); it is a helm `from` value only, not a general mapping space.
+`step` rotates both linear and angular rates through `basis`, then composes the quaternion world-frame — one code path covering body-fly and view-relative manipulation. `SELF` is body-relative (a per-frame-rebuilt pose matrix); it is a helm `from` value only, not a general mapping space.
 
 **Rest of the surface.**
 
@@ -413,7 +413,7 @@ The angular half carries a **double-cover guard**: a quaternion and its negation
 
 `mapLocation` and `mapDirection` convert points and vectors between any pair of named spaces. All work is done in flat scalar arithmetic — no objects created per call.
 
-**Spaces:** `WORLD`, `EYE`, `SCREEN`, `NDC`, `MODEL`, `MATRIX` (custom frame).
+**Spaces:** `WORLD`, `EYE`, `SCREEN`, `NDC`, `MODEL`, `MATRIX` (custom frame). `SCREEN` is the pixel grid the signed viewport describes; the sign of `vp[3]` names which of the two it is — canvas space (top-left, y down) or window space (bottom-left, y up).
 
 #### Conventions
 
@@ -425,10 +425,12 @@ WEBGL  = −1   z ∈ [−1,  1]
 WEBGPU =  0   z ∈ [ 0,  1]
 ```
 
-**Viewport** — `vp = [x, y, w, h]` with signed `h`:
+**Viewport** — `vp = [x, y, w, h]` with signed `h`. Its sign names the space the pixels are in:
 ```
-h < 0  screen y-down (DOM / p5 mouseX·mouseY)  →  [0, canvasH, canvasW, −canvasH]
-h > 0  screen y-up   (OpenGL gl_FragCoord)     →  [0, 0, canvasW, canvasH]
+h < 0  canvas space — the surface's logical pixels, top-left, y down       →  [0, canvasH, canvasW, −canvasH]
+       what a DOM offset, p5's mouseX·mouseY, labels and the HUD count
+h > 0  window space — the drawing buffer's device pixels, bottom-left, y up →  [0, 0, canvasW, canvasH]
+       what gl_FragCoord, readPixel and uResolution count
 ```
 The sign of `h` is the only thing that differs — no branching, no flags.
 
@@ -450,7 +452,7 @@ const m = {
   mat4PV?:    /* mat4Proj × mat4View — optional, computed if absent */,
   mat4PVInv?: /* inv(mat4PV)         — optional, computed if absent */,
 }
-const vp = [0, height, width, -height]  // signed h = screen y-down
+const vp = [0, height, width, -height]  // signed h = canvas space (top-left, y down)
 
 mapLocation(out, worldX, worldY, worldZ, WORLD, SCREEN, m, vp, WEBGL)
 ```
@@ -696,15 +698,15 @@ projIsOrtho  projNear  projFar  projFov  projHfov
 projLeft  projRight  projTop  projBottom
 ```
 
-**Pixel ratio:** `pixelRatio(proj, vpH, eyeZ, ndcZMin)` — world-units-per-pixel at a given depth, handles both perspective and orthographic.
+**Pixel ratio:** `pixelRatio(proj, vpH, eyeZ, ndcZMin)` — world-units-per-pixel at a given depth — canvas or window pixels, by the viewport's sign — handles both perspective and orthographic.
 
-**Viewport matrix:** `mat4Viewport(out, vp, ndcZMin)` — the matrix `W` taking NDC to screen coordinates, so world → screen is `(W · P · V · p) / w` through `mat4MulPoint` and screen → world the inverse of that composition
+**Viewport matrix:** `mat4Viewport(out, vp, ndcZMin)` — the matrix `W` taking NDC into the space the signed viewport names (canvas or window), so world → screen is `(W · P · V · p) / w` through `mat4MulPoint` and screen → world the inverse of that composition
 
-**Pick matrix:** `mat4Pick(proj, px, py, vp)` — mutates a projection matrix in-place so that the pixel at `(px, py)` maps to the full NDC square, making a 1×1 FBO render contain exactly that pixel. Takes the same signed viewport `vp` as `mapLocation` — the y-convention is preserved automatically.
+**Pick matrix:** `mat4Pick(proj, px, py, vp)` — mutates a projection matrix in-place so that the pixel at `(px, py)` maps to the full NDC square, making a 1×1 FBO render contain exactly that pixel. Takes the same signed viewport `vp` as `mapLocation` — the space (canvas or window) is preserved automatically.
 
-**Pointer ray:** `unproject(outO, outD, sx, sy, m, vp, ndcZMin)` — a screen point as a world ray: origin on the near plane, unit direction toward the far plane. Same bag and signed viewport as `mapLocation` (`mat4PVInv` filled by the caller); `null` when the bag has no inverse. The point-at-depth form stays `mapLocation(SCREEN → WORLD)` with a depth in `z`.
+**Pointer ray:** `unproject(outO, outD, sx, sy, m, vp, ndcZMin)` — a point of `SCREEN` (canvas or window, by the viewport's sign) as a world ray: origin on the near plane, unit direction toward the far plane. Same bag and signed viewport as `mapLocation` (`mat4PVInv` filled by the caller); `null` when the bag has no inverse. The point-at-depth form stays `mapLocation(SCREEN → WORLD)` with a depth in `z`.
 
-**Pointer hit:** `pointerHit(px, py, x, y, z, radius, m, vp, ndcZMin, shape = CIRCLE)` — is the pointer within `radius` px of the projected world point? `CIRCLE` (Euclidean) or `SQUARE` (Chebyshev), boundary inclusive; a point whose screen depth falls outside `[0, 1]` never hits.
+**Pointer hit:** `pointerHit(px, py, x, y, z, radius, m, vp, ndcZMin, shape = CIRCLE)` — is the pointer within `radius` px of the projected world point? `CIRCLE` (Euclidean) or `SQUARE` (Chebyshev), boundary inclusive; a point whose window depth falls outside `[0, 1]` never hits.
 
 **Pick-id codec:** `idToRgba(out, id)` packs a 24-bit id into `[r, g, b, 1]` normalised floats, R the low byte; `rgbaToId(r, g, b)` decodes the bytes of a readback. Id `0` is the background; ids run `1 … 2²⁴ − 1`.
 
