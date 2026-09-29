@@ -38,6 +38,9 @@
  *                            gl_FragCoord, readPixel and uResolution count.
  *                            NDC y=−1 → y=0 (bottom);  NDC y=+1 → y=H (top)
  *
+ * The sign moves x and y only: out[2] is the depth over [0, 1] in either
+ * convention (ndcZMin fixes the range), so a round trip is exact under both.
+ *
  * Pass [0, canvasH, canvasW, −canvasH] for screen space (p5 / DOM coordinates).
  * Pass [0, 0, canvasW, canvasH] for window space (gl_FragCoord, GL's bottom-left).
  * All helpers use vp[2]/vp[3] signed — no Math.abs — so both conventions
