@@ -27,7 +27,7 @@
  * agnostic — they produce the same matrix regardless of the NDC y direction.
  *
  * ── Canvas vs window y ─────────────────────────────────────────────────────
- * The pixel grid's y direction — canvas space's y-down (a DOM offset, p5's
+ * The pixel grid's y direction — screen space's y-down (a DOM offset, p5's
  * mouseX·mouseY) against window space's y-up (the drawing buffer, GL's
  * gl_FragCoord) — is a separate concern from NDC-y direction and is handled
  * in query.js via the signed viewport height. See the query.js module header

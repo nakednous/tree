@@ -6,7 +6,7 @@
 
 // Coordinate spaces
 // SCREEN is the pixel grid the signed viewport describes (query.js module
-// header): negative height — canvas space, the surface's logical pixels,
+// header): negative height — screen space, the surface's logical pixels,
 // top-left, y down; positive — window space, the drawing buffer's device
 // pixels, bottom-left, y up.
 export const WORLD  = 'WORLD';

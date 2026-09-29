@@ -413,7 +413,7 @@ The angular half carries a **double-cover guard**: a quaternion and its negation
 
 `mapLocation` and `mapDirection` convert points and vectors between any pair of named spaces. All work is done in flat scalar arithmetic — no objects created per call.
 
-**Spaces:** `WORLD`, `EYE`, `SCREEN`, `NDC`, `MODEL`, `MATRIX` (custom frame). `SCREEN` is the pixel grid the signed viewport describes; the sign of `vp[3]` names which of the two it is — canvas space (top-left, y down) or window space (bottom-left, y up).
+**Spaces:** `WORLD`, `EYE`, `SCREEN`, `NDC`, `MODEL`, `MATRIX` (custom frame). `SCREEN` is the pixel grid the signed viewport describes; the sign of `vp[3]` names which of the two it is — screen space (top-left, y down) or window space (bottom-left, y up).
 
 #### Conventions
 
@@ -427,7 +427,7 @@ WEBGPU =  0   z ∈ [ 0,  1]
 
 **Viewport** — `vp = [x, y, w, h]` with signed `h`. Its sign names the space the pixels are in:
 ```
-h < 0  canvas space — the surface's logical pixels, top-left, y down       →  [0, canvasH, canvasW, −canvasH]
+h < 0  screen space — the surface's logical pixels, top-left, y down       →  [0, canvasH, canvasW, −canvasH]
        what a DOM offset, p5's mouseX·mouseY, labels and the HUD count
 h > 0  window space — the drawing buffer's device pixels, bottom-left, y up →  [0, 0, canvasW, canvasH]
        what gl_FragCoord, readPixel and uResolution count
@@ -452,7 +452,7 @@ const m = {
   mat4PV?:    /* mat4Proj × mat4View — optional, computed if absent */,
   mat4PVInv?: /* inv(mat4PV)         — optional, computed if absent */,
 }
-const vp = [0, height, width, -height]  // signed h = canvas space (top-left, y down)
+const vp = [0, height, width, -height]  // signed h = screen space (top-left, y down)
 
 mapLocation(out, worldX, worldY, worldZ, WORLD, SCREEN, m, vp, WEBGL)
 ```
