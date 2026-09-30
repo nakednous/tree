@@ -1252,6 +1252,7 @@ const gizmo = {
       [A(4, { color: true }), {}],                                              // capacity: needs 24, writes 4
       [A(30), { bits: tree.NONE }],                                             // nothing: 0
       [A(30, { color: true }), { bits: tree.LABELS | tree._X | tree._Y | tree._Z }],
+      [A(30, { color: true }), { ndcYSign: -1 }],                              // the letters under a y-down NDC: the glyph height flips
     ], { writes: [0] }),
     gridLines: f64([
       [A(44), {}],                                                              // 4 · 11

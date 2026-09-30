@@ -43,8 +43,10 @@
  * A generator writes in the frame the caller means — model space for scene
  * gizmos (the bridge's M places them), logical pixels for HUD gizmos.
  * Nothing here consults a camera except locusLines and frustumLines, which
- * take what they need explicitly. Signatures: out first, the subject second
- * where there is one, options last.
+ * take what they need explicitly — and axesLines' letter glyphs, which are
+ * chiral and so follow the projection's NDC y direction (`opts.ndcYSign`)
+ * rather than any camera. Signatures: out first, the subject second where
+ * there is one, options last.
  */
 
 'use strict';
@@ -237,10 +239,18 @@ function _ring(cx, cy, cz, r, u, v, n, sweep) {
  * size / 30. Semantic colour per axis and its glyph (COLOR_X / Y / Z), or
  * opts.color when `semantic` is false.
  *
+ * A letter glyph is chiral — it is read off the plane it lies in, so which
+ * way its height runs decides whether it reads upright or mirrored — and the
+ * height therefore follows the projection's NDC y direction: ndcYSign +1
+ * (NDC y-up, the default) or −1 (y-down, a flipped projection).
+ *
  * Count: 2 · axes + 18 · (LABELS ? 1 : 0), at most 30.
  *
  * @param {object} out  Arrays object.
- * @param {{ size?:number, bits?:number, semantic?:boolean, color?:number[] }} [opts]
+ * @param {{ size?:number, bits?:number, semantic?:boolean, color?:number[],
+ *           ndcYSign?:number }} [opts]
+ * @param {number} [opts.ndcYSign=1]  +1 NDC y-up; −1 NDC y-down — the frame
+ *        the letters read under.
  * @returns {number} Vertices needed.
  */
 export function axesLines(out, opts) {
@@ -252,18 +262,19 @@ export function axesLines(out, opts) {
   _begin(out);
   if (bits & LABELS) {
     const cw = size/40, ch = size/30, cs = 1.04*size;
+    const h = (o.ndcYSign ?? 1) < 0 ? ch : -ch;   // a letter's height, along the NDC's y
     axis(0);
-    _line(cs,  cw, -ch, cs, -cw,  ch);
-    _line(cs, -cw, -ch, cs,  cw,  ch);
+    _line(cs,  cw, -h, cs, -cw,  h);
+    _line(cs, -cw, -h, cs,  cw,  h);
     axis(1);
-    _line( cw, cs,  ch,  0, cs,   0);
-    _line(  0, cs,   0, -cw, cs,  ch);
-    _line(-cw, cs,  ch,  0, cs,   0);
-    _line(  0, cs,   0,  0, cs, -ch);
+    _line( cw, cs,  h,  0, cs,   0);
+    _line(  0, cs,   0, -cw, cs,  h);
+    _line(-cw, cs,  h,  0, cs,   0);
+    _line(  0, cs,   0,  0, cs, -h);
     axis(2);
-    _line(-cw, -ch, cs,  cw, -ch, cs);
-    _line( cw, -ch, cs, -cw,  ch, cs);
-    _line(-cw,  ch, cs,  cw,  ch, cs);
+    _line(-cw, -h, cs,  cw, -h, cs);
+    _line( cw, -h, cs, -cw,  h, cs);
+    _line(-cw,  h, cs,  cw,  h, cs);
   }
   axis(0);
   if (bits & X)  _line(0, 0, 0,  size, 0, 0);
