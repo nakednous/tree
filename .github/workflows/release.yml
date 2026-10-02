@@ -1,0 +1,39 @@
+# The GitHub release for a published tag, made by the runner's own token: a
+# release should not depend on a maintainer's machine holding a valid gh
+# credential. Notes are generated from the commits between the previous tag and
+# this one — `gh release edit <tag>` refines them where a release deserves
+# prose — and npm publishing stays the maintainer's; this workflow releases, it
+# does not publish.
+#
+# A tag pushed again, which is how a Pages deploy is re-fired, finds its release
+# already there and leaves the job green.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0                    # --generate-notes reads the tag history
+      - name: Release the tag unless it is already released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release ${tag} exists — nothing to do"
+            exit 0
+          fi
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "${{ github.event.repository.name }} ${tag#v}" \
+            --verify-tag \
+            --generate-notes
