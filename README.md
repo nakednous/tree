@@ -665,7 +665,7 @@ qToAxisAngle
 **Mat4 arithmetic** (`query.js`):
 ```
 mat4Mul  mat4Invert  mat4MulPoint  mat4MulDir
-mat3NormalFromMat4  mat4Location  mat3Direction
+mat3FromMat4  mat3NormalFromMat4  mat4Location  mat3Direction
 mat4PV  mat4MV
 ```
 

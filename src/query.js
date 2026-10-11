@@ -121,6 +121,22 @@ export function mat4Invert(out, src) {
 }
 
 /**
+ * The upper-left 3×3 of a mat4: the linear block — rotation, scale and shear —
+ * without the translation. The rotation part the notation writes `R(M)`, and the
+ * eye→world basis when the matrix is the camera frame (host's `view.mat4Eye`).
+ * mat3NormalFromMat4 is the inverse-transpose of this same block, and the one to
+ * reach for when a normal travels under scale.
+ * @param {Float32Array|number[]} out  9-element destination.
+ * @param {Float32Array|number[]} src  16-element mat4.
+ */
+export function mat3FromMat4(out, src) {
+  out[0]=src[0]; out[1]=src[1]; out[2]=src[2];
+  out[3]=src[4]; out[4]=src[5]; out[5]=src[6];
+  out[6]=src[8]; out[7]=src[9]; out[8]=src[10];
+  return out;
+}
+
+/**
  * Normal matrix: inverseTranspose(upper-left 3×3 of src).
  * On degeneracy writes zeros and returns out.
  * @param {Float32Array|number[]} out  9-element destination.

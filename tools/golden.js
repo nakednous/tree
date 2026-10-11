@@ -497,6 +497,11 @@ const query = {
       [M16, I16], [M16, F], [M16, P], [M16, O],
       [M16, SING], [M16, new Array(16).fill(0)],                              // singular: null
     ]),
+    mat3FromMat4: f32([
+      [new Array(9).fill(0), I16], [new Array(9).fill(0), F], [new Array(9).fill(0), V],
+      [new Array(9).fill(0), S234], [new Array(9).fill(0), SING],
+      [new Array(9).fill(0), PV],                                             // a projection's block: copied, not interpreted
+    ]),
     mat3NormalFromMat4: f32([
       [new Array(9).fill(0), I16], [new Array(9).fill(0), F], [new Array(9).fill(0), S234],
       [new Array(9).fill(0), SING],                                           // singular: zeros
