@@ -64,7 +64,7 @@
  *
  * ── Extension contract ─────────────────────────────────────────────────────
  * A constraint is any object exposing: `kind` (integer discriminant),
- * `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z)`, and
+ * `solve(ox,oy,oz, dx,dy,dz)`, `value(out, report)`, `seed(x,y,z[, report])`, and
  * optionally `scalar()` / `azEl(out2)` / `aim(ax,ay,az[, zx,zy,zz])` — the
  * basis re-aim seam the bridge's deferred `from` frame drives — and
  * `proxy(ox,oy,oz, dx,dy,dz, radius)`, the analytic pick: the ray parameter
@@ -616,21 +616,37 @@ export class Constraint {
   }
 
   /**
-   * Seed the canonical state from a value (used by the bridge on bind() so the
-   * handle starts at the bound target's value). Chainable.
-   *   SPHERE — sets the unit direction (a point value recovers its heading).
-   *   PLANE  — projects the value onto the plane.
-   *   AXIS   — projects the value onto the line, clamped to extent.
-   *   DIAL   — projects the value onto the dial plane, derives the wrapped
-   *            angle, and picks the WINDING NEAREST the current θ (so an
-   *            external sync doesn't unwind accumulated turns), clamped.
+   * Seed the canonical state from a value — the one seeding verb, dispatching by
+   * kind. Chainable.
+   *
+   * The value is in the constraint's own `report` space unless `report` says
+   * otherwise: a DIRECTION value is a heading (SPHERE) or a radial unit (DIAL)
+   * and is taken as given; a POINT value is a world point and is measured from
+   * the anchor. That is the same space `value()` writes, so a bound handle round
+   * trips — seed, solve, write back, seed again — without changing meaning.
+   *
+   *   SPHERE — DIRECTION: the heading is the value, normalized. POINT: the
+   *            heading is the point's own direction from the anchor.
+   *   PLANE  — projects the point onto the plane. No direction to seed: a
+   *            DIRECTION value is read as a point.
+   *   AXIS   — projects the point onto the line, clamped to extent. DIRECTION
+   *            likewise read as a point (an axis has no heading state).
+   *   DIAL   — θ from the value's in-plane angle (the point's, or the radial
+   *            unit's when DIRECTION), picking the WINDING NEAREST the current θ
+   *            so an external sync doesn't unwind accumulated turns, clamped.
    *
    * @param {number} x,y,z  Seed value.
+   * @param {number} [report]  The value's space — POINT | DIRECTION (default the
+   *        constraint's own `report`; PLANE / AXIS have no direction state).
    * @returns {Constraint} this
    */
-  seed(x, y, z) {
+  seed(x, y, z, report) {
+    const r = (report === POINT || report === DIRECTION) ? report : this.report;
+    const asDir = r === DIRECTION && (this.kind === SPHERE || this.kind === DIAL);
     if (this.kind === SPHERE) {
-      const vx=x-this.anchor[0], vy=y-this.anchor[1], vz=z-this.anchor[2];
+      const vx = asDir ? x : x-this.anchor[0];
+      const vy = asDir ? y : y-this.anchor[1];
+      const vz = asDir ? z : z-this.anchor[2];
       const l = Math.sqrt(vx*vx + vy*vy + vz*vz);
       if (l >= EPS) { this.dir[0]=vx/l; this.dir[1]=vy/l; this.dir[2]=vz/l; }
     } else if (this.kind === PLANE) {
@@ -645,7 +661,9 @@ export class Constraint {
       this.pt[1]=this.anchor[1]+s*this.u[1];
       this.pt[2]=this.anchor[2]+s*this.u[2];
     } else if (this.kind === DIAL) {
-      const wx=x-this.anchor[0], wy=y-this.anchor[1], wz=z-this.anchor[2];
+      const wx = asDir ? x : x-this.anchor[0];
+      const wy = asDir ? y : y-this.anchor[1];
+      const wz = asDir ? z : z-this.anchor[2];
       const px = wx*this.r0[0] + wy*this.r0[1] + wz*this.r0[2];
       const py = wx*this.r1[0] + wy*this.r1[1] + wz*this.r1[2];
       if (px*px + py*py >= EPS*EPS) {
@@ -681,7 +699,7 @@ export class Constraint {
       const px = this.n[0], py = this.n[1], pz = this.n[2];
       this.n[0] = ax; this.n[1] = ay; this.n[2] = az;
       _unit(this.n, px, py, pz);
-      this.seed(this.pt[0], this.pt[1], this.pt[2]);
+      this.seed(this.pt[0], this.pt[1], this.pt[2], POINT);
     } else if (this.kind === AXIS) {
       const px = this.u[0], py = this.u[1], pz = this.u[2];
       this.u[0] = ax; this.u[1] = ay; this.u[2] = az;
